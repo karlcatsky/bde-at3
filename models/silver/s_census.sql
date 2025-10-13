@@ -164,7 +164,7 @@ SELECT
     Count_psns_occ_priv_dwgs_P::INT AS occupants_private_dwelling_persons,
     Count_Persons_other_dwgs_M::INT AS occupants_other_dwelling_males,
     Count_Persons_other_dwgs_F::INT AS occupants_other_dwelling_females,
-    Count_Persons_other_dwgs_P::INT AS occupants_other_dwelling_persons
+    Count_Persons_other_dwgs_P::INT AS occupants_other_dwelling_persons,
     
     -- Casting G02 fields 
 

@@ -27,7 +27,7 @@ ranked_updates AS (
 
 SELECT  
     {{ dbt_utils.generate_surrogate_key(['room_type']) }} AS room_type_id, 
-    cleaned.room_type AS room_type, 
-    ranked_updates.last_updated AS last_updated
+    room_type, 
+    last_updated
 FROM ranked_updates 
 WHERE update_rank = 1 -- take only most recent 

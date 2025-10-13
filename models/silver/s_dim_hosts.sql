@@ -11,7 +11,11 @@ WITH cleaned as (
         -- standard string cleans for name matching
         TRIM(LOWER(host_name)) AS host_name, 
         TRIM(LOWER(host_neighbourhood)) AS host_neighbourhood, 
-        TO_DATE(host_since, 'DD/MM/YYYY') AS host_since, -- enforce postgres standard date format
+        -- enforce postgres standard date format if expected date pattern 
+        CASE WHEN host_since ~ '^\d{2}/\d{2}/\d{4}' 
+            THEN TO_DATE(host_since, 'DD/MM/YYYY')
+            ELSE NULL 
+        END AS host_since, 
         host_is_superhost::BOOLEAN as is_superhost,
         scraped_date::DATE AS scraped_date
     FROM {{ ref('b_listings') }}
