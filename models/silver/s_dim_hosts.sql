@@ -22,7 +22,7 @@ suburb as (
         suburb_id AS suburb_id, 
         TRIM(LOWER(suburb_name)) AS suburb_name, -- standard clean for matching 
         lga_code AS lga_code
-    FROM {{ ref('s_suburbs') }}
+    FROM {{ ref('s_dim_suburbs') }}
 )
 
 SELECT 
