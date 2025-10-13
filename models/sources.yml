@@ -1,0 +1,12 @@
+sources: 
+  - name: raw 
+    description: Raw data from CSV files 
+    database: postgres 
+    schema: bronze 
+
+    tables: 
+      - name: raw_personal_characteristics
+      - name: raw_central_tendencies 
+      - name: raw_lga_codes 
+      - name: raw_lga_suburbs 
+      - name: raw_listings 
