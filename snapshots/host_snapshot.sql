@@ -5,7 +5,7 @@
         target_schema='silver', 
         strategy='timestamp', 
         unique_key='host_id', 
-        updated_at='[scraped_date]'
+        updated_at='scraped_date'
     )
 }}
 
