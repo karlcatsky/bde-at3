@@ -5,7 +5,7 @@
         unique_key='suburb_id',
         target_schema='silver',
         strategy='timestamp',
-        updated_at='[census_date]'
+        updated_at='census_date'
     )
 }}
 

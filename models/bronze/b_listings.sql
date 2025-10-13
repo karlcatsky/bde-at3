@@ -1,6 +1,6 @@
 {{
     config(
-        unique_key='LISTING_ID', 
+        unique_key='listing_id', 
         alias='listings'
     )
 }} 
