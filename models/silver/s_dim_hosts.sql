@@ -37,7 +37,18 @@ current as (
     WHERE currency_rank = 1 
 ),
 
--- host_neighbourhood is linked to suburbs.id
+-- Get the first valid host_since value as the oldest non-null value for the host 
+-- Assumes that host_since shouldn't change so we want to preserve the original valid date
+host_since_best as (
+    SELECT DISTINCT ON (host_id) 
+        host_id, 
+        host_since 
+    FROM cleaned 
+    WHERE host_since IS NOT NULL 
+    ORDER BY host_id, scraped_date ASC -- earliest valid date
+)
+
+-- host_neighbourhood is linked to suburbs.suburb_id
 suburb as (
     SELECT 
         suburb_id AS suburb_id, 
@@ -50,13 +61,16 @@ suburb as (
 SELECT 
     current.host_id AS host_id,
     INITCAP(current.host_name) AS host_name, -- after matching revert back to Title Case
-    current.host_since AS host_since,
+    COALESCE(host_since_best.host_since, current.host_since) AS host_since, -- Use the best available value
     current.is_superhost AS is_superhost,
     suburb.suburb_id AS neighbourhood_id,
     current.scraped_date AS last_updated
 FROM current 
+-- the JOIN here provides potential backup dates if the most recent happens to be invalid
+LEFT JOIN host_since_best 
+    ON current.host_id = host_since_best.host_id
 -- LEFT JOIN will mean that records without a host_neighbourhood name matching a name in suburbs will deliberately have a NULL neighbourhood_id
-LEFT JOIN suburb 
-ON current.host_neighbourhood = suburb.suburb_name
+LEFT JOIN suburb
+    ON current.host_neighbourhood = suburb.suburb_name
 
 
