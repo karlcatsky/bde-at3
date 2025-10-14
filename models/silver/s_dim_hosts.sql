@@ -46,7 +46,7 @@ host_since_best as (
     FROM cleaned 
     WHERE host_since IS NOT NULL 
     ORDER BY host_id, scraped_date ASC -- earliest valid date
-)
+),
 
 -- host_neighbourhood is linked to suburbs.suburb_id
 suburb as (

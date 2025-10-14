@@ -2,11 +2,11 @@
 
 {{
     config(
-        unique_key='census_id', 
+        unique_key='lga_census_id', 
         alias='census',
         materialized='table',
         post_hook=[ 
-            "ALTER TABLE {{ this }} ADD PRIMARY KEY (census_id)", 
+            "ALTER TABLE {{ this }} ADD PRIMARY KEY (lga_census_id)", 
             "ALTER TABLE {{ this }} ADD CONSTRAINT fk_lga_code
             FOREIGN KEY (lga_code) REFERENCES {{ ref('s_dim_LGAs')  }} (lga_code)"
         ]
@@ -25,18 +25,18 @@ personal_characteristics AS (
 merged AS(
     SELECT 
     -- strip out characters and cast to INT 
-        REGEXP_REPLACE(lga_code_2016, '[A-Za-z]', '', 'g')::INT as lga_code, 
+        REGEXP_REPLACE(p.lga_code_2016, '[A-Za-z]', '', 'g')::INT as cleaned_lga_code, 
     -- indicate the temporal source of the data with the actual 2016 census date 
         '2016-08-09'::DATE as census_date, 
         * 
-    FROM central_tendencies 
-    INNER JOIN personal_characteristics 
-    ON central_tendencies.lga_code_2016 = personal_characteristics.lga_code_2016
+    FROM central_tendencies c
+    INNER JOIN personal_characteristics p
+    ON c.lga_code_2016 = p.lga_code_2016
 ) 
 
 SELECT 
-    {{ dbt_utils.generate_surrogate_key(['lga_code', 'census_date']) }} as census_id, -- new unique identifier will allow ingestion of later census data also 
-    lga_code, 
+    {{ dbt_utils.generate_surrogate_key(['cleaned_lga_code', 'census_date']) }} as lga_census_id, -- new unique identifier will allow ingestion of later census data also 
+    cleaned_lga_code as lga_code, 
     census_date, 
     -- Casting G01 fields 
 
