@@ -14,7 +14,7 @@ SELECT DISTINCT
     CASE 
         WHEN TRIM(LOWER(lga_name)) = 'bayside'
         THEN 'Botany Bay' 
-    ELSE TRIM(INTICAP(lga_name)) 
+    ELSE TRIM(INITCAP(lga_name)) 
     END AS lga_name, 
     '2016-08-09'::DATE AS census_date
 FROM {{ ref('b_lga_codes') }}
@@ -31,7 +31,7 @@ SELECT
 UNION ALL 
 
 SELECT 
-    19339 AS lga_code, 
+    19399 AS lga_code, 
     'Unincorporated NSW' AS lga_name, 
     '2016-08-09'::DATE AS census_date 
 

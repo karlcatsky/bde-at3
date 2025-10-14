@@ -12,8 +12,8 @@
 
 WITH code_lookup as (
     SELECT DISTINCT
-
         lga_code AS lga_code, 
+        TRIM(LOWER(lga_name)) AS lga_name, -- standard clean for matching
         census_date -- census date timestamp should be shared between these two tables
     FROM {{ ref('s_dim_LGAs') }}
 ),
@@ -26,13 +26,14 @@ cleaned AS (
             WHEN TRIM(LOWER(lga_name)) = 'rockdale' AND TRIM(LOWER(suburb_name)) = 'bayside' 
                 THEN TRIM(LOWER(suburb_name)) -- select the incorrect suburb_name as the correct lga_name 
             ELSE TRIM(LOWER(lga_name)) -- and cleaning for everything else 
-        END AS lga_name
+        END AS lga_name,
         -- and then the equivalent swap: 
         CASE 
             WHEN TRIM(LOWER(lga_name)) = 'rockdale' AND TRIM(LOWER(suburb_name)) = 'bayside' 
                 THEN TRIM(LOWER(lga_name)) -- select the incorrect lga_name as the correct suburb_name 
             ELSE TRIM(LOWER(lga_name)) -- and clean everything else 
         END AS suburb_name
+        
     FROM {{ ref('b_lga_suburbs') }}
 )
 
