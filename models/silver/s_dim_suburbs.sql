@@ -3,9 +3,9 @@
         unique_key='suburb_id', 
         alias='suburbs',
         post_hook=[
-            "ALTER TABLE {{ this }} ADD PRIMARY KEY (id)", 
+            "ALTER TABLE {{ this }} ADD PRIMARY KEY (suburb_id)", 
             "ALTER TABLE {{ this }} ADD CONSTRAINT fk_lga_code 
-            FOREIGN KEY (lga_code) REFERENCES {{ ref('s_LGAs') }} (code)"
+            FOREIGN KEY (lga_code) REFERENCES {{ ref('s_dim_LGAs') }} (lga_code)"
         ]
     )
 }} 
@@ -15,7 +15,7 @@ WITH code_lookup as (
         TRIM(LOWER(lga_name)) AS lga_name, -- standardized clean for matching
         lga_code AS lga_code, 
         census_date -- census date timestamp should be shared between these two tables
-    FROM {{ ref('s_LGAs') }}
+    FROM {{ ref('s_dim_LGAs') }}
 ),
 
 cleaned AS (

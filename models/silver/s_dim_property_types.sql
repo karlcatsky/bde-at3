@@ -7,7 +7,7 @@
 
 WITH cleaned AS (
     SELECT  
-        INITCAP(property_type), -- enforcing Title Case as a standard for text dimensional values
+        INITCAP(property_type) AS property_type, -- enforcing Title Case as a standard for text dimensional values
         scraped_date::DATE AS last_updated 
     FROM {{ ref('b_listings') }}
     ORDER BY property_type
@@ -26,7 +26,7 @@ ranked_updates AS (
 
 SELECT 
     {{ dbt_utils.generate_surrogate_key(['property_type'])}} AS property_type_id, 
-    cleaned.property_type,
-    ranked_updates.last_updated  
+    cleaned.property_type AS property_type,
+    ranked_updates.last_updated AS last_updated
 FROM ranked_updates 
 WHERE update_rank = 1 -- take only the most recent update  

@@ -9,7 +9,7 @@
 }} 
 
 SELECT DISTINCT 
-    lga_code::INT, 
+    lga_code::INT AS lga_code, 
     TRIM(INITCAP(lga_name)) AS lga_name, -- enforce "Title Case"
-    "2016-08-09"::DATE AS census_date
+    '2016-08-09'::DATE AS census_date
 FROM {{ ref('b_lga_codes') }}

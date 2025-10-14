@@ -1,14 +1,14 @@
 -- All census data is joined 
 
 {{
-    configs(
-        unique_key='id', 
+    config(
+        unique_key='census_id', 
         alias='census',
         materialized='table',
         post_hook=[ 
-            "ALTER TABLE {{ this }} ADD PRIMARY KEY (id)", 
+            "ALTER TABLE {{ this }} ADD PRIMARY KEY (census_id)", 
             "ALTER TABLE {{ this }} ADD CONSTRAINT fk_lga_code
-            FOREIGN KEY (lga_code) REFERENCES {{ ref('s_LGAs')  }} (code)"
+            FOREIGN KEY (lga_code) REFERENCES {{ ref('s_dim_LGAs')  }} (lga_code)"
         ]
     )
 }}
@@ -27,7 +27,7 @@ merged AS(
     -- strip out characters and cast to INT 
         REGEXP_REPLACE(lga_code_2016, '[A-Za-z]', '', 'g')::INT as lga_code, 
     -- indicate the temporal source of the data with the actual 2016 census date 
-        "2016-08-09"::DATE as census_date, 
+        '2016-08-09'::DATE as census_date, 
         * 
     FROM central_tendencies 
     INNER JOIN personal_characteristics 
@@ -35,7 +35,7 @@ merged AS(
 ) 
 
 SELECT 
-    {{ dbt_utils.generate_surrogate_key(['lga_code', 'census_date']) }} as id, -- new unique identifier will allow ingestion of later census data also 
+    {{ dbt_utils.generate_surrogate_key(['lga_code', 'census_date']) }} as census_id, -- new unique identifier will allow ingestion of later census data also 
     lga_code, 
     census_date, 
     -- Casting G01 fields 
@@ -164,7 +164,7 @@ SELECT
     Count_psns_occ_priv_dwgs_P::INT AS occupants_private_dwelling_persons,
     Count_Persons_other_dwgs_M::INT AS occupants_other_dwelling_males,
     Count_Persons_other_dwgs_F::INT AS occupants_other_dwelling_females,
-    Count_Persons_other_dwgs_P::INT AS occupants_other_dwelling_persons
+    Count_Persons_other_dwgs_P::INT AS occupants_other_dwelling_persons,
     
     -- Casting G02 fields 
 

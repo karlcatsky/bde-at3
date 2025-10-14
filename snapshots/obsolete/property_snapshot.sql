@@ -3,7 +3,7 @@
 {{
     config(
         target_schema='silver', 
-        unique_key='property_type_id'., 
+        unique_key='property_type_id', 
         strategy='timestamp', 
         updated_at='last_updated'
     )

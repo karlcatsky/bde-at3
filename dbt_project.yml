@@ -1,5 +1,5 @@
-name: 'bde_at3'
-version: '1.0.0'
+name: "bde_at3"
+version: "1.0.0"
 config-version: 2
 
 profile: 'default'
@@ -35,7 +35,7 @@ models:
       +schema: bronze 
     silver: 
       +materialized: table 
-      +schema: bronze 
+      +schema: silver 
     gold: 
       star: 
         +materialized: table 
@@ -43,7 +43,6 @@ models:
       mart: 
         +materialized: view 
         +schema: gold 
-
-snapshots: 
-  bde_at3: 
-    +schema: silver 
+snapshots:
+  bde_at3:
+    +schema: silver
