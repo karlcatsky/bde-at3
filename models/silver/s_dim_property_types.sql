@@ -26,7 +26,7 @@ ranked_updates AS (
 
 SELECT 
     {{ dbt_utils.generate_surrogate_key(['property_type'])}} AS property_type_id, 
-    cleaned.property_type AS property_type,
+    ranked_updates.property_type AS property_type,
     ranked_updates.last_updated AS last_updated
 FROM ranked_updates 
 WHERE update_rank = 1 -- take only the most recent update  

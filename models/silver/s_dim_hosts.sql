@@ -16,7 +16,10 @@ WITH cleaned as (
             THEN TO_DATE(host_since, 'DD/MM/YYYY')
             ELSE NULL 
         END AS host_since, 
-        host_is_superhost::BOOLEAN as is_superhost,
+        CASE -- If not clearly true, assume false (including for nulls)
+            WHEN LOWER(TRIM(host_is_superhost)) IN ('true', 't', 'yes', 'y', '1') THEN TRUE 
+            ELSE FALSE
+        END AS is_superhost,
         scraped_date::DATE AS scraped_date
     FROM {{ ref('b_listings') }}
 ), 
@@ -46,7 +49,7 @@ host_since_best as (
     FROM cleaned 
     WHERE host_since IS NOT NULL 
     ORDER BY host_id, scraped_date ASC -- earliest valid date
-)
+),
 
 -- host_neighbourhood is linked to suburbs.suburb_id
 suburb as (
