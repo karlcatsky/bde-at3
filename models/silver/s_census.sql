@@ -35,9 +35,11 @@ merged AS(
 ) 
 
 SELECT 
+    -- Keys and timestamps 
     {{ dbt_utils.generate_surrogate_key(['cleaned_lga_code', 'census_date']) }} as lga_census_id, -- new unique identifier will allow ingestion of later census data also 
     cleaned_lga_code as lga_code, 
     census_date, 
+    
     -- Casting G01 fields 
 
     -- Age categories 
@@ -171,7 +173,7 @@ SELECT
     -- Note on datatypes: 
         -- Values appear to be INT, but could conceptually be decimal, so NUMERIC is used for flexibility in case census reporting practices change
     Median_age_persons::NUMERIC AS median_age_persons, 
-    Median_mortage_repay_monthly::NUMERIC AS median_mortgage_repay_monthly,
+    Median_mortgage_repay_monthly::NUMERIC AS median_mortgage_repay_monthly,
     Median_tot_prsnl_inc_weekly::NUMERIC AS median_total_personal_income_weekly,
     Median_rent_weekly::NUMERIC AS median_rent_weekly, 
     Median_tot_fam_inc_weekly::NUMERIC AS median_total_family_income_weekly, 
