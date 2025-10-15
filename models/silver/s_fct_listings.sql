@@ -89,7 +89,7 @@ SELECT
 
     -- FOREIGN KEYS 
         -- some keys are contained in facts table but properly cross-referenced here with new silver-layer dimensions
-    host.dim_host_id, 
+    host.dim_host_id AS host_id, 
     lga.lga_code,
     property.property_type_id, 
     room.room_type_id, 
