@@ -14,7 +14,7 @@ WITH source AS (
 ),
 
 lgas AS (
-    SELECT lga_code FROM {{ ref('g_dim_LGAs') }}
+    SELECT lga_code FROM {{ ref('g_dim_locations') }}
 ),
 
 dates AS (

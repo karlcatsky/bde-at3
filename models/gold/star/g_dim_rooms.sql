@@ -26,11 +26,11 @@ cleaned as (
 
 unknown as (
     SELECT 
-        0 as room_type_id, 
+        '0' as room_type_id, 
         'unknown' as room_type,
         '1900-01-01'::timestamp as valid_from,
         null::timestamp as valid_to
-),
+)
 
 select * from unknown 
 
