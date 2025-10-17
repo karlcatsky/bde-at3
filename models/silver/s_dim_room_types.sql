@@ -8,7 +8,7 @@
 WITH cleaned AS ( 
     SELECT 
         INITCAP(room_type) AS room_type, -- enforce Title Case
-        scraped_date::DATE AS last_updated
+        scraped_date::TIMESTAMP AS last_updated
     FROM {{ ref('b_listings' )}}
     ORDER BY room_type 
 ),

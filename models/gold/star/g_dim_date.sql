@@ -10,7 +10,7 @@ WITH scrape_dates AS (
     FROM {{ ref('s_scrapes') }}
 ),
 
-availaible_dates AS (
+available_dates AS (
     SELECT 
         (scraped_date + interval '1 day' * generate_series(0, 30))::DATE AS "date"
     FROM {{ ref('s_scrapes') }}
@@ -29,7 +29,7 @@ census_dates AS (
 ), 
 
 all_dates AS (
-    SELECT "1900-01-01"::DATE AS "date"
+    SELECT '1900-01-01'::DATE AS "date"
     UNION 
     SELECT "date" FROM scrape_dates 
     UNION
@@ -53,7 +53,7 @@ parts as (
 
 unknown as (
     SELECT 
-        0 as date_id, 
+        '0' as date_id, 
         '1900-01-01'::DATE AS "date",
         1900 AS "year",
         1 AS "quarter",

@@ -8,7 +8,7 @@
 WITH cleaned AS (
     SELECT  
         INITCAP(property_type) AS property_type, -- enforcing Title Case as a standard for text dimensional values
-        scraped_date::DATE AS last_updated 
+        scraped_date::TIMESTAMP AS last_updated 
     FROM {{ ref('b_listings') }}
     ORDER BY property_type
 ),

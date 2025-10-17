@@ -16,10 +16,10 @@ lga_source as (
 -- TODO: check for duplicate suburb names across LGAs in case nesting logic fails
 merged as (
     select
-        suburb_source.suburb_id as suburb_id,
-        suburb_source.suburb_name as suburb_name,
-        lga_source.lga_code as lga_id,
-        lga_source.lga_name as lga_name
+        s.suburb_id as suburb_id,
+        s.suburb_name as suburb_name,
+        l.lga_code as lga_id,
+        l.lga_name as lga_name
     FROM suburb_source s
     LEFT JOIN lga_source l 
         ON s.lga_code = l.lga_code
@@ -27,7 +27,7 @@ merged as (
 
 unknown as (
     SELECT 
-        0 as suburb_id, 
+        '0' as suburb_id, 
         'unknown' as suburb_name,
         0 as lga_id,
         'unknown' as lga_name

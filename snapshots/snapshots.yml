@@ -2,20 +2,11 @@ version: 2
 
 snapshots:
   - name: host_snapshot
-    relation: ref('b_listings')
+    relation: ref('s_dim_hosts')
     config:
       strategy: timestamp
-      unique_key: host_id
-      updated_at: scraped_date
-    columns:
-      - name: host_id
-        data_type: int
-      - name: host_name
-      - name: host_neighbourhood
-      - name: host_since
-      - name: host_is_superhost
-      - name: scraped_date
-        data_type: date
+      unique_key: host_id::text  # int key must be hashable
+      updated_at: last_updated
   
   - name: property_snapshot
     relation: ref('s_dim_property_types')
