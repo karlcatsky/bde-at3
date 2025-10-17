@@ -22,7 +22,7 @@ SELECT
     CASE 
         WHEN s.scrape_uid IN (SELECT scrape_uid FROM {{ ref('g_dim_scrapes') }}) 
             THEN s.scrape_uid 
-        ELSE 0 
+        ELSE '0' 
     END AS scrape_uid, 
     d.date_id AS valid_on_id,
     s.is_available AS active,
@@ -33,22 +33,22 @@ SELECT
     CASE 
         WHEN s.host_id IN (SELECT host_id FROM {{ ref('g_dim_hosts') }}) 
             THEN s.host_id 
-        ELSE 0 
+        ELSE 0 -- stilll int 
     END AS host_id, 
     CASE    
         WHEN s.lga_code IN (SELECT lga_id FROM {{ ref('g_dim_locations') }})
             THEN s.lga_code 
-        ELSE 0 
-    END AS lga_id,
+        ELSE 0  -- still int 
+    END AS lga_code,
     CASE
         WHEN s.property_type_id IN (SELECT property_type_id FROM {{ ref('g_dim_properties') }}) 
             THEN s.property_type_id 
-        ELSE 0 
+        ELSE '0'  -- text hash 
     END AS property_type_id,
     CASE 
         WHEN s.room_type_id IN (SELECT room_type_id FROM {{ ref('g_dim_rooms') }}) 
             THEN s.room_type_id 
-        ELSE 0
+        ELSE '0' -- text hash 
     END AS room_type_id,
 
     -- Factual measures 
@@ -63,5 +63,5 @@ SELECT
     s.review_scores_value
 
 -- Sources 
-FROM source s
+FROM source s -- inner join to make sure everything can be cross-referenced
 INNER JOIN dates d ON s.scraped_date = d.date

@@ -28,29 +28,29 @@ cleaned as (
 
 -- denormalize by reintroducing neighbourhood info 
 suburb as (
-    select suburb_id, suburb_name 
-    from {{ ref('suburb_snapshot') }}
+    select * 
+    from {{ ref('s_dim_suburbs') }}
 ),
 
 lga as (
     select lga_code, lga_name
-    from {{ ref('lga_snapshot') }}
+    from {{ ref('s_dim_LGAs') }}
 ),
 
-dates as (
+dates as ( -- new reference
     select * from {{ ref('g_dim_date') }}
 ),
 
 merged as(
     select
-        host_id,
+        host_id, -- should still be int 
         host_name,
         host_since as host_since_date,
-        COALESCE(dates.date_id, 0) as host_since_id,
+        COALESCE(dates.date_id, '0') as host_since_id, -- text
         is_superhost,
-        neighbourhood_id as suburb_id,
+        neighbourhood_id as suburb_id, -- text 
         suburb.suburb_name as suburb,
-        lga.lga_code as lga_id,
+        lga.lga_code as lga_code, -- still int
         lga.lga_name as lga,
         valid_from,
         valid_to
@@ -65,11 +65,11 @@ unknown as (
         0 as host_id, 
         'unknown' as host_name, 
         null::timestamp as host_since_date,
-        0 as host_since_id,
-        NULL as is_superhost,
-        0 as suburb_id,
+        '0' as host_since_id,
+        NULL::boolean as is_superhost,
+        '0' as suburb_id,
         'unknown' as suburb, 
-        0 as lga_id,
+        0 as lga_code,
         'unknown' as lga,  
         '1900-01-01'::timestamp as valid_from, 
         null::timestamp as valid_to
