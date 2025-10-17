@@ -5,7 +5,7 @@
 {{
     config(
         materialized='table',
-        alias='fct_census_demographics'
+        alias='fct_census_headcounts'
     )
 }}
 
@@ -14,7 +14,8 @@ WITH source AS (
 ),
 
 lgas AS (
-    SELECT lga_code FROM {{ ref('g_dim_locations') }}
+    SELECT lga_id 
+    FROM {{ ref('g_dim_locations') }}
 ),
 
 dates AS (
@@ -236,6 +237,7 @@ SELECT
     d.gender,
     d.headcount
 FROM all_demographics d
-LEFT JOIN lgas l ON d.lga_code = l.lga_code
-LEFT JOIN dates dt ON d.census_date = dt.date
+-- inner joins to ensure matching key references
+INNER JOIN lgas l ON d.lga_code = l.lga_id
+INNER JOIN dates dt ON d.census_date = dt.date
 WHERE d.headcount IS NOT NULL  -- Filter out nulls

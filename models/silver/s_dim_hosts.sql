@@ -20,7 +20,7 @@ WITH cleaned as (
             WHEN LOWER(TRIM(host_is_superhost)) IN ('true', 't', 'yes', 'y', '1') THEN TRUE 
             ELSE FALSE
         END AS is_superhost,
-        scraped_date::DATE AS scraped_date
+        scraped_date::TIMESTAMP AS scraped_date
     FROM {{ ref('b_listings') }}
 ), 
 -- Sort duplicate host_ids by currency of scrape

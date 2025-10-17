@@ -16,10 +16,10 @@ dates AS (
 
 unknown AS (
     SELECT 
-        0 AS scrape_uid, 
+        '0' AS scrape_uid, 
         0 AS scrape_id, 
         '1900-01-01'::DATE AS scraped_date,
-        0 AS date_id
+        '0' AS date_id
 )
 
 SELECT * FROM unknown 
