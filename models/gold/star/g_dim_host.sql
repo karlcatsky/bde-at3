@@ -16,9 +16,11 @@ cleaned as (
         host_since,
         is_superhost,
         neighbourhood_id, 
-        CASE -- the earliest available snapshot is assumed to be always valid 
+        CASE -- the earliest available snapshot for each key is assumed to be always valid 
             WHEN dbt_valid_from = (
-                SELECT MIN(dbt_valid_from) from source
+                SELECT MIN(inner.dbt_valid_from)
+                FROM source inner 
+                WHERE inner.host_id = source.host_id
             ) THEN '1900-01-01'::timestamp
             ELSE dbt_valid_from 
         END AS valid_from,

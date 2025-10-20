@@ -52,7 +52,7 @@ SELECT
     END AS room_type_id,
 
     -- Factual measures 
-    s.max_capacity, 
+    s.accommodates, 
     s.price,
     s.number_of_reviews,
     s.review_scores_rating,
