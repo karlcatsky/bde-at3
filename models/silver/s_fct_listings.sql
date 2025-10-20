@@ -13,7 +13,7 @@
 WITH source as (
     SELECT * FROM {{ ref('b_listings') }}
 ), 
-    -- Cleaning, casting and naming 
+    -- Cleaning, casting AND naming 
 source_cleaned as (
     SELECT 
         -- PRIMARY KEY 
@@ -25,16 +25,16 @@ source_cleaned as (
         scraped_date::DATE AS scraped_date,
 
         -- Dimensional attributes (for joins) 
-            -- standardized cleaning approach for all attribute names
+            -- stANDardized cleaning approach for all attribute names
         TRIM(LOWER(room_type)) AS room_type, 
         TRIM(LOWER(property_type)) AS property_type, 
         TRIM(LOWER(listing_neighbourhood)) AS listing_neighbourhood, 
 
         -- MEASURES 
-        accommodates::INT AS max_capacity, 
+        accommodates::INT AS accommodates, 
         price::NUMERIC, -- appears to be INT but decimals are conceptually possible 
-        has_availability::BOOLEAN AS is_available, 
-        availability_30::INT, -- values should be between 0 and 30 but this constraint not included here 
+        has_availability::BOOLEAN AS has_availability, 
+        availability_30::INT AS availability_30, -- values should be BETWEEN 0 AND 30 but this constraint not included here 
 
         -- Reviews 
             -- for now, no new aliases are given because of lack of data dictionary description
@@ -83,11 +83,11 @@ lga as (
 ) 
 
 SELECT 
-    -- Index and date 
+    -- Index AND date 
     source_cleaned.listing_id, 
     source_cleaned.scraped_date,
 
-    -- FOREIGN KEYS 
+    -- ForEIGN KEYS 
         -- some keys are contained in facts table but properly cross-referenced here with new silver-layer dimensions
     host.dim_host_id AS host_id, 
     lga.lga_code,
@@ -96,9 +96,9 @@ SELECT
     scrape.scrape_uid,
 
     -- Factual measures
-    source_cleaned.max_capacity, 
+    source_cleaned.accommodates, 
     source_cleaned.price,
-    source_cleaned.is_available,
+    source_cleaned.has_availability,
     source_cleaned.availability_30, 
     source_cleaned.number_of_reviews,
     source_cleaned.review_scores_rating,
@@ -120,3 +120,14 @@ INNER JOIN property
     ON source_cleaned.property_type = property.property_type
 INNER JOIN lga 
     ON source_cleaned.listing_neighbourhood = lga.lga_name
+
+-- Filtering 
+    -- filter out unreasonably low price values AND NaN prices (relatively few of these)
+WHERE price >= 12 
+-- enforce valid ranges for review scores but don't drop whole record for NaN (too many)
+AND (review_scores_rating BETWEEN 0 AND 100 OR review_scores_rating != review_scores_rating)
+AND (review_scores_accuracy BETWEEN 0 AND 10 OR review_scores_accuracy != review_scores_accuracy)
+AND (review_scores_cleanliness BETWEEN 0 AND 10 OR review_scores_cleanliness != review_scores_cleanliness)
+AND (review_scores_checkin BETWEEN 0 AND 10 OR review_scores_checkin != review_scores_checkin)
+AND (review_scores_communication BETWEEN 0 AND 10 OR review_scores_communication != review_scores_communication)
+AND (review_scores_value BETWEEN 0 AND 10 OR review_scores_value != review_scores_value)

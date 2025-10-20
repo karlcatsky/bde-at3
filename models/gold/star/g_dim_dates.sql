@@ -49,6 +49,8 @@ parts as (
         EXTRACT(DOW FROM "date") AS "day_of_week", 
         EXTRACT(QUARTER FROM "date") AS "quarter"
     FROM all_dates
+    -- Filter out dates OOR, particularly the dummy date which will otherwise be duplicated by the auto keygen later
+    WHERE "date" > '2000-01-01'
 ),
 
 unknown as (
@@ -68,7 +70,7 @@ unknown as (
 
 SELECT * FROM unknown 
 
-UNION ALL
+UNION 
 
 SELECT 
     {{ dbt_utils.generate_surrogate_key(["date"]) }} as date_id, 

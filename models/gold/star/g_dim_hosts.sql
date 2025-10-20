@@ -1,7 +1,7 @@
 {{
     config(
         unique_key='host_id', 
-        alias='dim_host' 
+        alias='g_dim_hosts' 
     )
 }}
 
@@ -16,9 +16,11 @@ cleaned as (
         host_since,
         is_superhost,
         neighbourhood_id, 
-        CASE -- the earliest available snapshot is assumed to be always valid 
+        CASE -- the earliest available snapshot for each key is assumed to be always valid 
             WHEN dbt_valid_from = (
-                SELECT MIN(dbt_valid_from) from source
+                SELECT MIN(inner_src.dbt_valid_from)
+                FROM source inner_src 
+                WHERE inner_src.host_id = source.host_id
             ) THEN '1900-01-01'::timestamp
             ELSE dbt_valid_from 
         END AS valid_from,
@@ -38,7 +40,7 @@ lga as (
 ),
 
 dates as ( -- new reference
-    select * from {{ ref('g_dim_date') }}
+    select * from {{ ref('g_dim_dates') }}
 ),
 
 merged as(

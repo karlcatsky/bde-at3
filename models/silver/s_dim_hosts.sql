@@ -20,7 +20,7 @@ WITH cleaned as (
             WHEN LOWER(TRIM(host_is_superhost)) IN ('true', 't', 'yes', 'y', '1') THEN TRUE 
             ELSE FALSE
         END AS is_superhost,
-        scraped_date::TIMESTAMP AS scraped_date
+        scraped_date::TIMESTAMP AS scraped_dt
     FROM {{ ref('b_listings') }}
 ), 
 -- Sort duplicate host_ids by currency of scrape
@@ -29,7 +29,7 @@ ordered as (
         *, 
         ROW_NUMBER() OVER(
             PARTITION BY host_id 
-            ORDER BY scraped_date DESC
+            ORDER BY scraped_dt DESC
         ) AS currency_rank 
     FROM cleaned
 ),
@@ -48,7 +48,7 @@ host_since_best as (
         host_since 
     FROM cleaned 
     WHERE host_since IS NOT NULL 
-    ORDER BY host_id, scraped_date ASC -- earliest valid date
+    ORDER BY host_id, scraped_dt ASC -- earliest valid date
 ),
 
 -- host_neighbourhood is linked to suburbs.suburb_id
@@ -67,7 +67,7 @@ SELECT
     COALESCE(host_since_best.host_since, current.host_since) AS host_since, -- Use the best available value
     current.is_superhost AS is_superhost,
     suburb.suburb_id AS neighbourhood_id,
-    current.scraped_date AS last_updated
+    current.scraped_dt AS last_updated
 FROM current 
 -- the JOIN here provides potential backup dates if the most recent happens to be invalid
 LEFT JOIN host_since_best 

@@ -4,13 +4,14 @@
         alias='fct_listings'
     )
 }}
+
 -- CTEs
 WITH source AS (
     SELECT * FROM {{ ref('s_fct_listings') }}
 ),
 
 dates AS (
-    SELECT * FROM {{ ref('g_dim_date') }}
+    SELECT * FROM {{ ref('g_dim_dates') }}
 )
 
 SELECT 
@@ -25,9 +26,8 @@ SELECT
         ELSE '0' 
     END AS scrape_uid, 
     d.date_id AS valid_on_id,
-    s.is_available AS active,
+    s.has_availability AS active,
     s.availability_30 AS days_available,
-
 
     -- Foreign Keys with a dimensional table check
     CASE 
@@ -52,7 +52,7 @@ SELECT
     END AS room_type_id,
 
     -- Factual measures 
-    s.max_capacity, 
+    s.accommodates, 
     s.price,
     s.number_of_reviews,
     s.review_scores_rating,
