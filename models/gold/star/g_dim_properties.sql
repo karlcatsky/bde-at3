@@ -15,9 +15,9 @@ cleaned as (
         property_type,
         CASE -- backdate earliest timestamp for all keys
             WHEN dbt_valid_from = (
-                SELECT MIN(inner.dbt_valid_from) 
-                FROM source inner 
-                WHERE inner.property_type_id = source.property_type_id
+                SELECT MIN(inner_src.dbt_valid_from) 
+                FROM source inner_src 
+                WHERE inner_src.property_type_id = source.property_type_id
             ) THEN '1900-01-01'::timestamp
             ELSE dbt_valid_from 
         END AS valid_from,

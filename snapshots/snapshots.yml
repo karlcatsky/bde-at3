@@ -22,16 +22,16 @@ snapshots:
       unique_key: room_type_id
       updated_at: last_updated
 
-  - name: lga_snapshot 
-    relation: ref('s_dim_LGAs')
-    config:
-      strategy: timestamp
-      unique_key: lga_code
-      updated_at: census_date
+  # - name: lga_snapshot 
+  #   relation: ref('s_dim_LGAs')
+  #   config:
+  #     strategy: timestamp
+  #     unique_key: lga_code
+  #     updated_at: census_date
   
-  - name: suburb_snapshot
-    relation: ref('s_dim_suburbs')
-    config:
-      strategy: timestamp
-      unique_key: suburb_id
-      updated_at: census_date
+  # - name: suburb_snapshot
+  #   relation: ref('s_dim_suburbs')
+  #   config:
+  #     strategy: timestamp
+  #     unique_key: suburb_id
+  #     updated_at: census_date

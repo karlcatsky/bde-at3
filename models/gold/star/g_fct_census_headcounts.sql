@@ -19,7 +19,7 @@ lgas AS (
 ),
 
 dates AS (
-    SELECT date_id, date FROM {{ ref('g_dim_date') }}
+    SELECT date_id, date FROM {{ ref('g_dim_dates') }}
 ),
 
 -- Unpivot age groups

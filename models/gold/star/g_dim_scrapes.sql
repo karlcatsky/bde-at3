@@ -11,7 +11,7 @@ WITH source AS (
 ), 
 
 dates AS (
-    SELECT * FROM {{ ref('g_dim_date') }}
+    SELECT * FROM {{ ref('g_dim_dates') }}
 ),
 
 unknown AS (

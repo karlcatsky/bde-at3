@@ -11,7 +11,7 @@ SELECT * FROM {{ ref('s_census') }}
 
 dates AS (
     SELECT date_id, "date"
-    FROM {{ ref('g_dim_date') }}
+    FROM {{ ref('g_dim_dates') }}
 )
 
 SELECT 

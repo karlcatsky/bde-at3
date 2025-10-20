@@ -23,7 +23,7 @@ dates AS (
         date_id, 
         "date", 
         year_month 
-    FROM {{ ref('g_dim_date') }}
+    FROM {{ ref('g_dim_dates') }}
 ), 
 
 hosts AS (
@@ -32,14 +32,14 @@ hosts AS (
         is_superhost, 
         valid_from, --SCD2 
         valid_to 
-    FROM {{ ref('g_dim_host') }}
+    FROM {{ ref('g_dim_hosts') }}
 ), 
 
 neighbourhoods AS (
     SELECT 
         lga_id, 
         lga_name 
-    FROM {{ ref('g_dim_location') }}
+    FROM {{ ref('g_dim_locations') }}
 ), 
 
 -- Join facts to dims with SCD2 logic 
@@ -55,6 +55,7 @@ enriched AS (
         -- two separate one-hot columns for active and inactive listings makes querying easier later
         CASE WHEN f.active = TRUE THEN 1 ELSE 0 END AS is_active, 
         CASE WHEN f.active = FALSE THEN 1 ELSE 0 END AS is_inactive,
+        f.review_scores_rating as review_scores_rating
     FROM facts f 
     LEFT JOIN dates dt -- join with date dimension 
         ON f.valid_on_id = dt.date_id 
