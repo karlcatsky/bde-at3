@@ -48,16 +48,11 @@ merged as(
         host_id, -- should still be int 
         host_name,
         host_since as host_since_date,
-        COALESCE(dates.date_id, '0') as host_since_id, -- text
         is_superhost,
-        neighbourhood_id as suburb_id, -- text 
-        suburb.suburb_name as suburb,
-        lga.lga_code as lga_code, -- still int
-        lga.lga_name as lga,
+        suburb.suburb_name as host_neighbourhood,
         valid_from,
         valid_to
     FROM cleaned 
-    LEFT JOIN dates ON cleaned.host_since = dates.date
     LEFT JOIN suburb ON cleaned.neighbourhood_id = suburb.suburb_id 
     LEFT JOIN lga ON suburb.lga_code = lga.lga_code
 ),
@@ -67,18 +62,14 @@ unknown as (
         0 as host_id, 
         'unknown' as host_name, 
         null::timestamp as host_since_date,
-        '0' as host_since_id,
         NULL::boolean as is_superhost,
-        '0' as suburb_id,
-        'unknown' as suburb, 
-        0 as lga_code,
-        'unknown' as lga,  
+        'unknown' as host_neighbourhood, 
         '1900-01-01'::timestamp as valid_from, 
         null::timestamp as valid_to
 )
 
 SELECT * FROM unknown 
-UNION ALL 
+UNION  
 SELECT * FROM merged
 
 

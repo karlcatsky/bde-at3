@@ -22,6 +22,14 @@ snapshots:
       unique_key: room_type_id
       updated_at: last_updated
 
+  - name: listing_snapshot 
+    relation: ref('s_dim_listings') 
+    config: 
+      strategy: timestamp 
+      unique_key: listing_id::text # int key must be hashable 
+      updated_at: last_updated 
+
+# DEPR: 
   # - name: lga_snapshot 
   #   relation: ref('s_dim_LGAs')
   #   config:
