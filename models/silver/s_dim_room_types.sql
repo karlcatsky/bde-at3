@@ -1,7 +1,10 @@
 {{
     config(
         unique_key='room_type_id', 
-        alias='room_types'
+        alias='room_types',
+        post_hook=[
+        "ALTER TABLE {{ this }} ADD PRIMARY KEY (room_type_id)"
+        ]
     )
 }}
 

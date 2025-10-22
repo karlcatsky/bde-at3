@@ -11,7 +11,7 @@ with suburb_source as (
 ),
 
 lga_source as (
-    select * From {{ ref('s_dim_LGAs') }}
+    select * From {{ ref('s_dim_lgas') }}
 ),
 -- TODO: check for duplicate suburb names across LGAs in case nesting logic fails
 merged as (
@@ -34,7 +34,5 @@ unknown as (
 )
 
 SELECT * from unknown 
-
-union all 
-
+UNION  
 select * from merged

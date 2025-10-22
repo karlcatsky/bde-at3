@@ -11,53 +11,62 @@ WITH source as (
     SELECT * FROM {{ ref('listing_snapshot') }}
 ), 
 
+earliest_dates as (
+    SELECT -- Get the earliest validity for each timestamp in one go here 
+        listing_id, 
+        MIN(dbt_valid_from) OVER (PARTITION BY listing_id) as earliest_valid_from 
+    FROM source 
+),
+
 properties as (
     SELECT
         property_type_id as dim_prop_id, 
-        property_type
+        property_type,
+        valid_from,
+        valid_to
     FROM {{ ref('g_dim_properties') }}
 ),
 
 rooms as (
     SELECT 
         room_type_id as dim_room_id, 
-        room_type
+        room_type,
+        valid_from,
+        valid_to
     FROM {{ ref('g_dim_rooms') }}
 ), 
 
 locations as (
     SELECT 
-        suburb_id as dim_suburb_id, 
-        suburb_name
+        lga_id, 
+        lga_name
     FROM {{ ref('g_dim_locations') }} 
 ),
 
 cleaned as (
     SELECT 
-        listing_id, -- PK 
+        s.listing_id, -- PK 
         
         -- Foreign Keys for Joins 
-        room_type_id, 
-        property_type_id, 
-        lga_id, 
+        s.room_type_id, 
+        s.property_type_id, 
+        s.lga_id, 
 
         -- Attributes 
-        accommodates, 
-        has_availability as active,
-        price as daily_price, 
+        s.accommodates, 
+        s.has_availability as active,
+        s.price as daily_price, 
 
         -- SCD2 timestamps 
         CASE -- backdate earliest timestamp for each distinct listing_id 
-            WHEN dbt_valid_from = (
-                SELECT MIN(inner_src.dbt_valid_from)
-                FROM source inner_src 
-                WHERE inner_src.listing_id = source.listing_id
-            ) THEN '1900-01-01'::timestamp 
-            ELSE dbt_valid_from 
+            WHEN s.dbt_valid_from = e.earliest_valid_from
+                THEN '1900-01-01'::timestamp 
+            ELSE s.dbt_valid_from 
         END AS valid_from, 
-        dbt_valid_to as valid_to 
+        s.dbt_valid_to as valid_to 
 
-    FROM source 
+    FROM source s 
+    JOIN earliest_dates e ON s.listing_id = e.listing_id
 ), 
 
 enriched as ( -- Denormalization 
@@ -70,14 +79,15 @@ enriched as ( -- Denormalization
         -- Enriched attributes (denormalized)
         p.property_type, 
         r.room_type,
-        l.lga_name as listing_neighbourhood,
+        l.lga_name as listing_neighbourhood, -- listing neighbourhoods are at LGA level
         -- SCD2 timestamps
         c.valid_from,
         c.valid_to 
+
     FROM cleaned c 
     -- Join on overlapping SCD intervals
     LEFT JOIN properties p 
-        ON c.property_type_id = p.property_type_id
+        ON c.property_type_id = p.dim_prop_id
         AND c.valid_from < COALESCE(p.valid_to, '9999-12-31'::timestamp) 
         AND COALESCE(c.valid_to, '9999-12-31'::timestamp) > p.valid_from 
     LEFT JOIN rooms r 
@@ -86,21 +96,19 @@ enriched as ( -- Denormalization
         AND COALESCE(c.valid_to, '9999-12-31'::timestamp) > r.valid_from 
     LEFT JOIN locations l 
         ON c.lga_id = l.lga_id 
-        AND c.valid_from < COALESCE(l.valid_to, '9999-12-31'::timestamp) 
-        AND COALESCE(c.valid_to, '9999-12-31'::timestamp) > l.valid_from 
 ),
 
 unknown as (
     SELECT 
-        '0' as listing_id, 
-        NULL as active,
-        NULL::numeric as daily_price, 
+        0 as listing_id, 
+        NULL::BOOLEAN as active,
+        NULL::NUMERIC as daily_price, 
         NULL::INT as accommodates, 
         NULL as property_type, 
         NULL as room_type, 
         NULL as listing_neighbourhood,
-        '1900-01-01'::timestamp as valid_from,
-        null::timestamp as valid_to
+        '1900-01-01'::TIMESTAMP as valid_from,
+        null::TIMESTAMP as valid_to
 )
 
 SELECT * FROM unknown 

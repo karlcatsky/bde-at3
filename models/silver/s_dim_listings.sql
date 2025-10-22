@@ -33,7 +33,7 @@ cleaned as (
         TRIM(LOWER(listing_neighbourhood)) as listing_neighbourhood,
         
         -- not expected to change too frequently for same listing
-        accommodates::INT as accomodates, 
+        accommodates::INT as accommodates, 
         has_availability::BOOLEAN as has_availability, 
         price::NUMERIC as price,
 
@@ -86,7 +86,7 @@ lga as (
     SELECT 
         TRIM(LOWER(lga_name)) as dim_lga_name, 
         lga_code as lga_id 
-    FROM {{ ref('s_dim_LGAs') }}
+    FROM {{ ref('s_dim_lgas') }}
 )
 
 -- Build dimensional table 
@@ -96,7 +96,7 @@ SELECT
     current.listing_id, 
 
     -- Foreign keys (to other silver dims)
-    host.dim_host_id,  -- makes sure id is cross-ref'd
+    host.dim_host_id as host_id,  -- makes sure id is cross-ref'd
     room.room_type_id,
     property.property_type_id,
     lga.lga_id, 

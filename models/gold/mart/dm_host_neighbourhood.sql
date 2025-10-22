@@ -7,6 +7,7 @@
 WITH facts as (
     SELECT 
         valid_on_id, 
+        listing_id,
         lga_code, -- need this to link to lga_name 
         host_id,  -- via host_id 
         num_stays
@@ -17,7 +18,7 @@ listings as (
     SELECT 
         listing_id, 
         active, 
-        price,
+        daily_price,
         valid_from,
         valid_to
     FROM {{ ref('g_dim_listings') }} 
@@ -53,8 +54,8 @@ aggregated as (     -- merge and aggregate
         loc.lga_name as host_neighbourhood_lga, -- The LGA, not the suburb
         dt.year_month as year_month,
         SUM(
-            CASE WHEN l.active = TRUE 
-            THEN f.num_stays * l.price 
+            CASE WHEN ls.active = TRUE 
+            THEN f.num_stays * ls.daily_price 
             END 
         ) as total_est_revenue, 
         COUNT(DISTINCT f.host_id) as num_distinct_hosts 
@@ -65,9 +66,11 @@ aggregated as (     -- merge and aggregate
     LEFT JOIN hosts h   -- then host 
         ON f.host_id = h.host_id 
         AND dt.date BETWEEN h.valid_from AND COALESCE(h.valid_to, '9999-12-31'::timestamp) 
+    LEFT JOIN listings ls -- then join with listings dim
+        ON f.listing_id = ls.listing_id 
+        AND dt.date BETWEEN ls.valid_from AND COALESCE(ls.valid_to, '9999-12-31'::timestamp)
     LEFT JOIN locations loc -- then join host suburb 
         ON h.host_suburb = loc.dim_suburb 
-        dt.date BETWEEN h.valid_from AND COALESCE(h.valid_to, '9999-12-31'::timestamp) 
     
     GROUP BY host_neighbourhood_lga, year_month 
 ), 
@@ -80,6 +83,7 @@ final as (
         total_est_revenue, 
         total_est_revenue / num_distinct_hosts as est_revenue_per_host 
     FROM aggregated 
+    WHERE host_neighbourhood_lga IS NOT NULL
     ORDER BY host_neighbourhood_lga, year_month 
 )
 

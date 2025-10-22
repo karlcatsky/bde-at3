@@ -1,7 +1,13 @@
 {{
     config(
-        unique_key='UID', 
-        alias='facts'
+        unique_key='uid', 
+        alias='facts',
+        post_hook=[
+            "ALTER TABLE {{ this }} ADD CONSTRAINT fk_listing_id
+            FOREIGN KEY (listing_id) REFERENCES {{ ref('s_dim_listings') }}",
+            "ALTER TABLE {{ this }} ADD CONSTRAINT fk_scrape_uid
+            FOREIGN KEY (scrape_uid) REFERENCES {{ ref('s_scrapes') }}"
+        ]
     )
 }}
 
@@ -58,7 +64,7 @@ listing as (
 merged as ( 
     SELECT 
         -- Composite Key: listing_id x date 
-        ls.listing_id as listing_id, 
+        ls.dim_listing_id as listing_id, 
         src.scraped_dt as scraped_dt,
         scp.scrape_uid as scrape_uid, 
 
@@ -96,6 +102,6 @@ merged as (
 
 -- Create key and select 
 SELECT 
-    {{ dbt_utils.generate_surrogate_key(['listing_id', 'scrape_uid']) }} as "UID", 
+    {{ dbt_utils.generate_surrogate_key(['listing_id', 'scrape_uid']) }} as uid, 
     * 
 FROM merged 

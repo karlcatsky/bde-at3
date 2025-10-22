@@ -9,7 +9,7 @@ with facts as ( -- Source facts
     SELECT 
         listing_id, 
         host_id,
-        lga_id,
+        lga_code,
         valid_on_id, 
         num_stays,
         review_scores_rating
@@ -53,14 +53,17 @@ hosts as (
 
 enriched as ( -- Join facts to dims using SCD2 logic 
     SELECT 
+
         f.listing_id, 
         f.host_id, 
         n.lga_name as listing_neighbourhood, 
         dt.year_month,
         l.active, 
-        l.price, 
+        l.daily_price, 
         f.review_scores_rating,
-        h.is_superhost 
+        h.is_superhost,
+        f.num_stays
+
     FROM facts f 
     LEFT JOIN dates dt 
         ON f.valid_on_id = dt.date_id 
@@ -75,7 +78,7 @@ enriched as ( -- Join facts to dims using SCD2 logic
             BETWEEN h.valid_from 
                 AND COALESCE(h.valid_to, '9999-12-31'::timestamp) 
     LEFT JOIN neighbourhoods n 
-        ON f.lga_id = n.lga_id 
+        ON f.lga_code = n.lga_id 
 ),
 
 current_period as ( -- Compute aggregates for each month 
@@ -87,15 +90,15 @@ current_period as ( -- Compute aggregates for each month
             CASE WHEN active = TRUE THEN 1 ELSE 0 END
             )::numeric / NULLIF(COUNT(*), 0)
         ) * 100.0 as active_listing_rate, 
-        -- Price metrics for active listings 
-        MIN(CASE WHEN active = TRUE THEN price END) as min_price, 
-        MAX(CASE WHEN active = TRUE THEN price END) as max_price, 
+        -- daily_price metrics for active listings 
+        MIN(CASE WHEN active = TRUE THEN daily_price END) as min_price, 
+        MAX(CASE WHEN active = TRUE THEN daily_price END) as max_price, 
         PERCENTILE_CONT(0.5) WITHIN GROUP(
-            ORDER BY CASE WHEN active = TRUE THEN price END 
+            ORDER BY CASE WHEN active = TRUE THEN daily_price END 
         ) as mdn_price, 
-        AVG(CASE WHEN active = TRUE THEN price END) as avg_price, 
+        AVG(CASE WHEN active = TRUE THEN daily_price END) as avg_price, 
         -- Distinct hosts 
-        COUNT(DISTINCT host_id) as nunique_hosts, 
+        COUNT(DISTINCT host_id) as num_distinct_hosts, 
         -- Superhost rate 
         COUNT(DISTINCT host_id) FILTER (WHERE is_superhost = TRUE)
             / NULLIF(COUNT(DISTINCT host_id), 0) * 100.0 as superhost_rate, 
@@ -113,7 +116,7 @@ current_period as ( -- Compute aggregates for each month
         -- Average estimated revenue per active listing 
         AVG(CASE 
                 WHEN active = TRUE 
-                    THEN num_stays * price 
+                    THEN num_stays * daily_price 
             END) as avg_est_revenue_per_listing, 
         -- Counts for pctg change calculations 
         SUM(CASE WHEN active = TRUE THEN 1 ELSE 0 END) as total_active_listings, 
@@ -139,16 +142,16 @@ select  -- Final table output
 -- Already formed fields for current period: 
 	c.listing_neighbourhood, 
 	c.year_month, 
-	c.active_listings_rate, 
-	c.min_price_active, 
-	c.max_price_active, 
-	c.mdn_price_active,
-	c.avg_price_active, 
+	c.active_listing_rate, 
+	c.min_price, 
+	c.max_price, 
+	c.mdn_price,
+	c.avg_price, 
 	c.num_distinct_hosts, 
 	c.superhost_rate, 
-	c.avg_review_score_active, 
+	c.avg_review_score, 
 	c.total_stays, 
-	c.avg_estimated_revenue_per_active_listing, 
+	c.avg_est_revenue_per_listing, 
 --  Percentage changes for active listings (month on month) 
 	case -- first month should be null 
 		when p.prev_active_listings > 0  -- pctg change

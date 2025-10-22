@@ -22,7 +22,8 @@ listings as (
     SELECT 
         listing_id, 
         active, 
-        price,
+        daily_price,
+        accommodates,
         valid_from,
         valid_to
     FROM {{ ref('g_dim_listings') }}
@@ -72,7 +73,7 @@ joined as (
         l.accommodates, 
         dt.year_month,
         l.active,
-        l.price,
+        l.daily_price as daily_price,
         f.review_scores_rating,
         f.num_stays, 
         f.host_id, 
@@ -90,7 +91,7 @@ joined as (
         AND dt.date BETWEEN p.valid_from AND COALESCE(p.valid_to, '9999-12-31'::timestamp)
     LEFT JOIN rooms r 
         ON f.room_type_id = r.room_type_id 
-        AND dt.date BETWEEN r.valid_from AND COALESCE(r.valid_t0, '9999-12-31'::timestamp) 
+        AND dt.date BETWEEN r.valid_from AND COALESCE(r.valid_to, '9999-12-31'::timestamp) 
     LEFT JOIN hosts h 
         ON f.host_id = h.host_id 
         AND dt.date BETWEEN h.valid_from AND COALESCE(h.valid_to, '9999-12-31'::timestamp) 
@@ -108,13 +109,13 @@ current_period as ( -- calculate metrics for each month
 		-- Active listings rate 
 		SUM(case when active = true then 1 else 0 end) / nullif(COUNT(*), 0) * 100.0 as active_listing_rate, 
 
-		-- min, max, mdn and avg price for active listings 
-		MIN(case when active = true then price end) as min_price, 
-		MAX(case when active = true then price end) as max_price, 
+		-- min, max, mdn and avg daily_price for active listings 
+		MIN(case when active = true then daily_price end) as min_daily_price, 
+		MAX(case when active = true then daily_price end) as max_daily_price, 
 		PERCENTILE_CONT(0.5) within group (
-			order by case when active = true then price end 
-			) as mdn_price, 
-		AVG(case when active = true then price end) as avg_price, 
+			order by case when active = true then daily_price end 
+			) as mdn_daily_price, 
+		AVG(case when active = true then daily_price end) as avg_daily_price, 
 
 		-- num distinct hosts 
 		COUNT(distinct host_id) as num_distinct_hosts, 
@@ -139,7 +140,7 @@ current_period as ( -- calculate metrics for each month
 		SUM(num_stays) as total_num_stays, 
 
 		-- avg estimated revenue per active listing 
-		AVG(case when active = true then num_stays * price end) as avg_est_revenue_per_active_listing
+		AVG(case when active = true then num_stays * daily_price end) as avg_est_revenue_per_active_listing
 
 	from joined 
 	group by 
@@ -173,10 +174,10 @@ SELECT
     c.accommodates,
     c.year_month, 
     ROUND(c.active_listing_rate, 2) as active_listing_rate,
-    ROUND(c.min_price, 2) as min_price,
-    ROUND(c.max_price, 2) as max_price,
-    c.mdn_price as mdn_price,
-    ROUND(c.avg_price, 2) as avg_price,
+    ROUND(c.min_daily_price, 2) as min_daily_price,
+    ROUND(c.max_daily_price, 2) as max_daily_price,
+    c.mdn_daily_price as mdn_daily_price,
+    ROUND(c.avg_daily_price, 2) as avg_daily_price,
     c.num_distinct_hosts,
     ROUND(c.superhost_rate, 4) as superhost_rate,
     ROUND(c.avg_review_score, 4) as avg_review_score,

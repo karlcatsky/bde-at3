@@ -2,11 +2,11 @@ version: 2
 
 snapshots:
   - name: host_snapshot
-    relation: ref('s_dim_hosts')
+    relation: ref('b_listings')   # bronze layer should be snapshotted because the host_id comes directly from source
     config:
       strategy: timestamp
       unique_key: host_id::text  # int key must be hashable
-      updated_at: last_updated
+      updated_at: scraped_date
   
   - name: property_snapshot
     relation: ref('s_dim_property_types')
