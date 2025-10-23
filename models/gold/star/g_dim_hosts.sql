@@ -12,19 +12,11 @@ with source as (
 cleaned as (
     select 
 
-        host_id::int as host_id,
-        TRIM(LOWER(host_name)) as host_name,
-        TRIM(LOWER(host_neighbourhood)) as host_neighbourhood, -- suburb_name
-        -- enforce postgres standard date format if expected date pattern 
-        CASE WHEN host_since ~ '^\d{2}/\d{2}/\d{4}' 
-            THEN TO_DATE(host_since, 'DD/MM/YYYY')
-            ELSE NULL 
-        END AS host_since, 
-        CASE -- If not clearly true, assume false (including for nulls)
-            WHEN LOWER(TRIM(host_is_superhost)) IN ('true', 't', 'yes', 'y', '1') 
-                THEN TRUE 
-            ELSE FALSE
-        END AS is_superhost,
+        host_id,
+        INITCAP(host_name),
+        INITCAP(host_neighbourhood) as host_neighbourhood, -- suburb_name
+        host_since::date as host_since_date, 
+        is_superhost,
         CASE -- the earliest available snapshot for each key is assumed to be always valid 
             WHEN dbt_valid_from = (
                 SELECT MIN(inner_src.dbt_valid_from)
@@ -38,25 +30,11 @@ cleaned as (
     FROM source
 ),
 
-merged as(
-    select
-
-        host_id, -- should still be int 
-        host_name,
-        host_since as host_since_date,
-        is_superhost,
-        INITCAP(host_neighbourhood) as host_neighbourhood,
-        valid_from,
-        valid_to
-
-    FROM cleaned 
-),
-
 unknown as (
     SELECT 
         0 as host_id, 
         'unknown' as host_name, 
-        null::timestamp as host_since_date,
+        null::date as host_since_date,
         NULL::boolean as is_superhost,
         'unknown' as host_neighbourhood, 
         '1900-01-01'::timestamp as valid_from, 
@@ -65,7 +43,7 @@ unknown as (
 
 SELECT * FROM unknown 
 UNION  
-SELECT * FROM merged
+SELECT * FROM cleaned
 
 
 

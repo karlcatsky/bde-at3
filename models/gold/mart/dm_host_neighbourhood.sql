@@ -77,7 +77,7 @@ aggregated as (     -- merge and aggregate
 
 final as (
     SELECT 
-        host_neighbourhood_lga, 
+        INITCAP(host_neighbourhood_lga), -- presentation view 
         year_month, 
         num_distinct_hosts, 
         total_est_revenue, 

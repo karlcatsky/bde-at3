@@ -15,18 +15,15 @@
 }} 
 
 -- downstream of other dimensional tables and closest to facts 
-WITH source as ( 
-    SELECT * FROM {{ ref('b_listings') }}
-), 
 
-cleaned as ( 
+WITH sorted_snapshot as ( 
     SELECT 
         -- Primary Key 
         listing_id::int as listing_id, 
 
         -- Slowly Changing Dimensions 
             -- Direct keys 
-        host_id::INT as fct_host_id, 
+        host_id::INT as host_id, 
             -- linked by names
         TRIM(LOWER(room_type)) as room_type, 
         TRIM(LOWER(property_type)) as property_type, 
@@ -39,25 +36,22 @@ cleaned as (
 
         -- Snapshotting information 
         scrape_id::BIGINT as scrape_id, 
-        scraped_date::TIMESTAMP as scraped_dt
-        -- Everything else is considered a measure 
-    FROM source 
-), 
+        scraped_date::TIMESTAMP as scraped_dt,
 
--- Sort duplicate listing_id by recency of scrape 
-ordered as (
-    SELECT 
-        *, 
-        ROW_NUMBER() OVER(
+        -- Currency tracker
+        ROW_NUMBER() OVER( -- rank by currency
             PARTITION BY listing_id 
-            ORDER BY scraped_dt DESC 
+            ORDER BY scraped_date DESC, dbt_valid_from DESC
         ) as currency_rank 
-    FROM cleaned
-),
+
+        -- Everything else is considered a measure 
+    FROM {{ ref('listing_snapshot') }} 
+    WHERE dbt_valid_to IS NULL  -- Still valid 
+), 
 
 -- Select the most recent records per listing_id 
 current as (
-    SELECT * FROM ordered 
+    SELECT * FROM ordered_snapshot
     WHERE currency_rank = 1 
 ), 
 
@@ -67,6 +61,7 @@ host as (
     SELECT host_id as dim_host_id 
     FROM {{ ref('s_dim_hosts') }}
 ),
+
     -- Where key itself is needed
 room as (
     SELECT 
@@ -112,7 +107,7 @@ SELECT
 
 
 FROM current  
-INNER JOIN host on current.fct_host_id = host.dim_host_id 
+INNER JOIN host on current.host_id = host.dim_host_id 
 INNER JOIN room on current.room_type = room.dim_room_type 
 INNER JOIN property on current.property_type = property.dim_property_type 
 INNER JOIN lga on current.listing_neighbourhood = lga.dim_lga_name

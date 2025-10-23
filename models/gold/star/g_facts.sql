@@ -12,33 +12,36 @@ WITH source_facts as (
     SELECT * FROM {{ ref('s_facts') }} 
 ), 
 
-listings_source as ( -- source data from listings snapshot 
-    SELECT * FROM {{ ref('listing_snapshot') }}
+earliest_listings as ( -- for backdating validity 
+    SELECT  
+        listing_id,
+        MIN(dbt_valid_from) as earliest_timestamp
+    FROM {{ ref('listing_snapshot') }}
+    GROUP BY listing_id
 ), 
 
 listings as ( -- cleaned selected keys from listings hub
     SELECT 
-        listing_id, -- main hub link to other dimensions 
+        s.listing_id, -- main hub link to other dimensions 
         -- other dimensional keys 
-        property_type_id, 
-        room_type_id,
-        host_id,
-        lga_id, 
+        s.property_type_id, 
+        s.room_type_id,
+        s.host_id,
+        s.lga_id, 
         -- Denormalized attributes 
-        price, 
-        has_availability, 
+        s.price, 
+        s.has_availability, 
         -- SCD2 dimensions 
-        CASE
-            WHEN dbt_valid_from = (     -- backdate earliest timestamp for each distinct listing_id
-                SELECT MIN(dbt_valid_from)
-                FROM listings_source inner_src 
-                WHERE inner_src.listing_id = listings_source.listing_id
-            ) THEN '1900-01-01'::timestamp 
+        CASE    -- backdate the earliest validity timestamp for each distinct listing_id
+            WHEN s.dbt_valid_from = e.earliest_timestamp 
+                THEN '1900-01-01'::timestamp 
             ELSE dbt_valid_from 
         END AS valid_from, 
         dbt_valid_to as valid_to 
     
-    FROM listings_source
+    FROM {{ ref('listing_snapshot') }} s 
+    LEFT JOIN earliest_listings e 
+        ON s.listing_id = e.listing_id
 ), 
 
 dates as (  -- temporal dimension 

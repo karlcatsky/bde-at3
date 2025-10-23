@@ -100,8 +100,8 @@ current_period as ( -- Compute aggregates for each month
         -- Distinct hosts 
         COUNT(DISTINCT host_id) as num_distinct_hosts, 
         -- Superhost rate 
-        COUNT(DISTINCT host_id) FILTER (WHERE is_superhost = TRUE)
-            / NULLIF(COUNT(DISTINCT host_id), 0) * 100.0 as superhost_rate, 
+        (COUNT(DISTINCT host_id) FILTER (WHERE is_superhost = TRUE))::NUMERIC
+            / NULLIF(COUNT(DISTINCT host_id), 0)::NUMERIC * 100.0 as superhost_rate, 
         -- Total stays for active listings 
         SUM(CASE WHEN active = TRUE THEN num_stays END) as total_stays, 
         -- Average review score for active listings 

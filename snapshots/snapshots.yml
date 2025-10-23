@@ -2,12 +2,19 @@ version: 2
 
 snapshots:
   - name: host_snapshot
-    relation: ref('b_listings')   # bronze layer should be snapshotted because the host_id comes directly from source
+    relation: ref('stg_hosts')    # A staged view of the bronze layer is snapshotted because host_id comes directly from raw data 
     config:
       strategy: timestamp
-      unique_key: host_id::text  # int key must be hashable
+      unique_key: host_id
       updated_at: scraped_date
-  
+
+  - name: listing_snapshot 
+    relation: ref('stg_listings') # A staged view of the bronze layer is snapshotted becuase listing_id comes directly from raw data 
+    config: 
+      strategy: timestamp 
+      unique_key: listing_id
+      updated_at: scraped_date
+       
   - name: property_snapshot
     relation: ref('s_dim_property_types')
     config:
@@ -21,25 +28,3 @@ snapshots:
       strategy: timestamp
       unique_key: room_type_id
       updated_at: last_updated
-
-  - name: listing_snapshot 
-    relation: ref('s_dim_listings') 
-    config: 
-      strategy: timestamp 
-      unique_key: listing_id::text # int key must be hashable 
-      updated_at: last_updated 
-
-# DEPR: 
-  # - name: lga_snapshot 
-  #   relation: ref('s_dim_LGAs')
-  #   config:
-  #     strategy: timestamp
-  #     unique_key: lga_code
-  #     updated_at: census_date
-  
-  # - name: suburb_snapshot
-  #   relation: ref('s_dim_suburbs')
-  #   config:
-  #     strategy: timestamp
-  #     unique_key: suburb_id
-  #     updated_at: census_date
