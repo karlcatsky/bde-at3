@@ -1,7 +1,7 @@
 {{
     config(
         unique_key='date_id', 
-        alias='dim_date'
+        alias='dim_dates'
     )
 }}
 

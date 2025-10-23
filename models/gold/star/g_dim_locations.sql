@@ -11,15 +11,15 @@ with suburb_source as (
 ),
 
 lga_source as (
-    select * From {{ ref('s_dim_LGAs') }}
+    select * From {{ ref('s_dim_lgas') }}
 ),
 -- TODO: check for duplicate suburb names across LGAs in case nesting logic fails
 merged as (
     select
         s.suburb_id as suburb_id,
-        s.suburb_name as suburb_name,
+        INITCAP(s.suburb_name) as suburb_name, -- Title Case for presentation
         l.lga_code as lga_id,
-        l.lga_name as lga_name
+        INITCAP(l.lga_name) as lga_name
     FROM suburb_source s
     LEFT JOIN lga_source l 
         ON s.lga_code = l.lga_code
@@ -28,13 +28,11 @@ merged as (
 unknown as (
     SELECT 
         '0' as suburb_id, 
-        'unknown' as suburb_name,
+        'Unknown' as suburb_name,
         0 as lga_id,
-        'unknown' as lga_name
+        'Unknown' as lga_name
 )
 
 SELECT * from unknown 
-
-union all 
-
+UNION  
 select * from merged

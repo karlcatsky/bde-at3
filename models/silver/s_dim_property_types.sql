@@ -1,7 +1,10 @@
 {{
     config(
         unique_key='property_type_id', 
-        alias='property_types'
+        alias='property_types',
+        post_hook=[
+            "ALTER TABLE {{ this }} ADD PRIMARY KEY (property_type_id)"
+        ]
     ) 
 }} 
 
