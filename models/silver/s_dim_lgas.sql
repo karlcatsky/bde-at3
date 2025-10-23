@@ -13,7 +13,7 @@ SELECT DISTINCT
     -- One lga_name is incorrect: the lga for lga_code 11100 should be 'Botany Bay', not 'Bayside'
     CASE 
         WHEN TRIM(LOWER(lga_name)) = 'bayside'
-        THEN 'botany bay' 
+        THEN 'botany bay'  -- This is the correct LGA for 11100
     ELSE TRIM(LOWER(lga_name)) 
     END AS lga_name, 
     '2016-08-09'::DATE AS census_date

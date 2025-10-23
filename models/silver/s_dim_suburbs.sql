@@ -21,16 +21,21 @@ WITH code_lookup as (
 cleaned AS (
     SELECT DISTINCT 
         -- There is a specific error in the source data where 'BAYSIDE' and 'ROCKDALE' are in the wrong columns. 
-        -- Here we simply swap the two values to correct the error 
+        -- Bayside should be a suburb of Rockdale, not the other way around 
+        -- So we correct this here
         CASE 
-            WHEN TRIM(LOWER(lga_name)) = 'rockdale' AND TRIM(LOWER(suburb_name)) = 'bayside' 
-                THEN TRIM(LOWER(suburb_name)) -- select the incorrect suburb_name as the correct lga_name 
-            ELSE TRIM(LOWER(lga_name)) -- and cleaning for everything else 
+            WHEN (TRIM(LOWER(lga_name)) = 'bayside' AND TRIM(LOWER(suburb_name)) = 'rockdale')
+                THEN TRIM(LOWER(suburb_name)) -- Select Rockdale as the LGA (correct) 
+            -- if lga_name is 'bayside' but other suburb name 
+            WHEN TRIM(LOWER(lga_name)) = 'bayside' 
+            -- Replace it with the correct value: 'botany bay' 
+                THEN 'botany bay' 
+            ELSE TRIM(LOWER(lga_name)) -- otherwise just standardize
         END AS lga_name,
         -- and then the equivalent swap: 
         CASE 
-            WHEN TRIM(LOWER(lga_name)) = 'rockdale' AND TRIM(LOWER(suburb_name)) = 'bayside' 
-                THEN TRIM(LOWER(lga_name)) -- select the incorrect lga_name as the correct suburb_name 
+            WHEN TRIM(LOWER(lga_name)) = 'bayside' AND TRIM(LOWER(suburb_name)) = 'rockdale' 
+                THEN TRIM(LOWER(lga_name)) -- select Bayside as the suburb  (correct)
             ELSE TRIM(LOWER(suburb_name)) -- and clean everything else 
         END AS suburb_name
         

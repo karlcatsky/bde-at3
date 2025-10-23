@@ -193,7 +193,7 @@ SELECT
         else null 
     end as pct_change_inactive,
     c.total_num_stays, 
-    c.avg_est_revenue_per_active_listing
+    ROUND(c.avg_est_revenue_per_active_listing, 2) as avg_est_rvn_per_actv_lstng
     
 from current_period c 
 left join previous_period p -- expected null for first month when no previous month available 

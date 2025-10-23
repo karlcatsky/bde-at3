@@ -1,7 +1,7 @@
 {{
     config(
         unique_key='listing_id', 
-        alias='g_dim_listings' 
+        alias='dim_listings' 
     )
 }}
 

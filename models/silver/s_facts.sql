@@ -62,7 +62,6 @@ with
             scp.scrape_uid as scrape_uid,
 
             -- Factual measures
-            src.price,
             src.availability_30,
             src.number_of_reviews,
             src.review_scores_rating,
