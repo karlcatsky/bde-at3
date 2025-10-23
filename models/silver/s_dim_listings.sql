@@ -51,7 +51,7 @@ WITH sorted_snapshot as (
 
 -- Select the most recent records per listing_id 
 current as (
-    SELECT * FROM ordered_snapshot
+    SELECT * FROM sorted_snapshot
     WHERE currency_rank = 1 
 ), 
 

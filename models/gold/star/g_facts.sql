@@ -22,26 +22,29 @@ earliest_listings as ( -- for backdating validity
 
 listings as ( -- cleaned selected keys from listings hub
     SELECT 
-        s.listing_id, -- main hub link to other dimensions 
-        -- other dimensional keys 
-        s.property_type_id, 
-        s.room_type_id,
-        s.host_id,
-        s.lga_id, 
+        ls.listing_id, -- main hub link to other dimensions 
+        ls.host_id,
+
+        -- other dimensional attributes (links) 
+        TRIM(LOWER(ls.property_type)) as property_type, 
+        TRIM(LOWER(ls.room_type)) as room_type,
+        TRIM(LOWER(ls.listing_neighbourhood)) as listing_neighbourhood, 
+
         -- Denormalized attributes 
-        s.price, 
-        s.has_availability, 
+        ls.price, 
+        ls.has_availability, 
+
         -- SCD2 dimensions 
         CASE    -- backdate the earliest validity timestamp for each distinct listing_id
-            WHEN s.dbt_valid_from = e.earliest_timestamp 
+            WHEN ls.dbt_valid_from = e.earliest_timestamp 
                 THEN '1900-01-01'::timestamp 
-            ELSE dbt_valid_from 
+            ELSE ls.dbt_valid_from 
         END AS valid_from, 
-        dbt_valid_to as valid_to 
+        ls.dbt_valid_to as valid_to 
     
-    FROM {{ ref('listing_snapshot') }} s 
+    FROM {{ ref('listing_snapshot') }} ls 
     LEFT JOIN earliest_listings e 
-        ON s.listing_id = e.listing_id
+        ON ls.listing_id = e.listing_id
 ), 
 
 dates as (  -- temporal dimension 
@@ -55,6 +58,7 @@ dates as (  -- temporal dimension
 properties as (  
     SELECT 
         property_type_id, 
+        TRIM(LOWER(property_type)) as dim_property_type, 
         valid_from,
         valid_to
     FROM {{ ref('g_dim_properties') }}
@@ -63,6 +67,7 @@ properties as (
 rooms as (
     SELECT 
         room_type_id, 
+        TRIM(LOWER(room_type)) as dim_room_type,
         valid_from,
         valid_to
     FROM {{ ref('g_dim_rooms') }}
@@ -70,7 +75,8 @@ rooms as (
 
 locations as (
     SELECT 
-        lga_id 
+        lga_id,
+        TRIM(LOWER(lga_name)) as lga_name
     FROM {{ ref('g_dim_locations') }} 
 ),
 
@@ -105,6 +111,7 @@ SELECT
         -- some light denormalization from listings dimension
     ls.price as daily_price, 
     ls.has_availability as active, 
+
         -- directly from factual source 
     s.availability_30 as days_available,
     s.number_of_reviews, 
@@ -125,13 +132,13 @@ INNER JOIN listings ls
     ON s.listing_id = ls.listing_id
     AND s.scraped_dt BETWEEN ls.valid_from AND COALESCE(ls.valid_to, '9999-12-31'::timestamp) 
 INNER JOIN properties p 
-    ON ls.property_type_id = p.property_type_id 
+    ON ls.property_type = p.dim_property_type
     AND s.scraped_dt BETWEEN p.valid_from AND COALESCE(p.valid_to, '9999-12-31'::timestamp) 
 INNER JOIN rooms r 
-    ON ls.room_type_id = r.room_type_id 
+    ON ls.room_type = r.dim_room_type 
     AND s.scraped_dt BETWEEN r.valid_from AND COALESCE(r.valid_to, '9999-12-31'::timestamp) 
 INNER JOIN hosts h 
     ON ls.host_id = h.host_id 
     AND s.scraped_dt BETWEEN h.valid_from AND COALESCE(h.valid_to, '9999-12-31'::timestamp) 
 INNER JOIN locations loc 
-    ON ls.lga_id = loc.lga_id 
+    ON ls.listing_neighbourhood = loc.lga_name 

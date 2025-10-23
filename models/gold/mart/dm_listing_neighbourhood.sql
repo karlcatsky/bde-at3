@@ -138,7 +138,7 @@ previous_period as ( -- Calculate previous period metrics for pct change
     FROM current_period 
 )
 
-select  -- Final table output 
+SELECT  -- Final table output 
 -- Already formed fields for current period: 
 	c.listing_neighbourhood, 
 	c.year_month, 
@@ -146,7 +146,7 @@ select  -- Final table output
 	c.min_price, 
 	c.max_price, 
 	c.mdn_price,
-	c.avg_price, 
+	ROUND(c.avg_price, 2), 
 	c.num_distinct_hosts, 
 	c.superhost_rate, 
 	c.avg_review_score, 

@@ -23,9 +23,9 @@ cleaned as (
                 FROM source inner_src 
                 WHERE inner_src.host_id = source.host_id
             ) THEN '1900-01-01'::timestamp
-            ELSE dbt_valid_from 
+            ELSE dbt_valid_from::timestamp
         END AS valid_from,
-        dbt_valid_to as valid_to
+        dbt_valid_to::timestamp as valid_to
 
     FROM source
 ),
@@ -33,12 +33,12 @@ cleaned as (
 unknown as (
     SELECT 
         0 as host_id, 
-        'unknown' as host_name, 
-        null::date as host_since_date,
+        'Unknown' as host_name, 
+        'Unknown' as host_neighbourhood, 
+        NULL::date as host_since_date,
         NULL::boolean as is_superhost,
-        'unknown' as host_neighbourhood, 
         '1900-01-01'::timestamp as valid_from, 
-        null::timestamp as valid_to
+        NULL::timestamp as valid_to
 )
 
 SELECT * FROM unknown 
