@@ -1,7 +1,7 @@
 {{
     config(
         unique_key='suburb_id', 
-        alias='suburbs',
+        alias='dim_suburbs',
         post_hook=[
             "ALTER TABLE {{ this }} ADD PRIMARY KEY (suburb_id)", 
             "ALTER TABLE {{ this }} ADD CONSTRAINT fk_lga_code 
