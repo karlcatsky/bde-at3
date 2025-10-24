@@ -9,25 +9,31 @@ with source as (
     select * from {{ ref('host_snapshot') }}
 ),
 
+earliest_dates as (
+    SELECT -- precompute earliest timestamp for backdating validity
+        host_id, 
+        MIN(dbt_valid_from) as earliest_valid_from
+    FROM source
+    GROUP BY host_id
+),
+
 cleaned as (
     select 
 
-        host_id,
-        INITCAP(host_name),
-        INITCAP(host_neighbourhood) as host_neighbourhood, -- suburb_name
-        host_since::date as host_since_date, 
-        is_superhost,
+        s.host_id,
+        INITCAP(s.host_name),
+        INITCAP(s.host_neighbourhood) as host_neighbourhood, -- suburb_name
+        s.host_since::date as host_since_date, 
+        s.is_superhost,
         CASE -- the earliest available snapshot for each key is assumed to be always valid 
-            WHEN dbt_valid_from = (
-                SELECT MIN(inner_src.dbt_valid_from)
-                FROM source inner_src 
-                WHERE inner_src.host_id = source.host_id
-            ) THEN '1900-01-01'::timestamp
-            ELSE dbt_valid_from::timestamp
+            WHEN s.dbt_valid_from = e.earliest_valid_from
+                THEN '1900-01-01'::timestamp
+            ELSE s.dbt_valid_from
         END AS valid_from,
-        dbt_valid_to::timestamp as valid_to
+        s.dbt_valid_to::timestamp as valid_to
 
-    FROM source
+    FROM source s 
+    JOIN earliest_dates e ON s.host_id = e.host_id
 ),
 
 unknown as (
