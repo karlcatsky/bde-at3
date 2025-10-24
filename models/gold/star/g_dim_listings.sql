@@ -14,8 +14,9 @@ WITH source as (
 earliest_dates as (
     SELECT -- Get the earliest validity for each timestamp in one go here 
         listing_id, 
-        MIN(dbt_valid_from) OVER (PARTITION BY listing_id) as earliest_valid_from 
+        MIN(dbt_valid_from) as earliest_valid_from 
     FROM source 
+    GROUP BY listing_id
 ),
 
 cleaned as (
