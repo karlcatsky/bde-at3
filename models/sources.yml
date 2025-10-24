@@ -10,3 +10,11 @@ sources:
       - name: raw_lga_codes 
       - name: raw_lga_suburbs 
       - name: raw_listings 
+  
+  - name: silver 
+    schema: silver 
+    tables:
+      - name: host_snapshot 
+      - name: listing_snapshot
+      - name: room_snapshot 
+      - name: property_snapshot 
