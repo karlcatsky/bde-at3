@@ -27,7 +27,11 @@ WITH base AS (
         scraped_date::TIMESTAMP as scraped_date 
 
     FROM {{ ref('b_listings') }}
-    WHERE host_id IS NOT NULL 
+    -- Yield only records after most recent changes 
+    WHERE scraped_date::TIMESTAMP > (
+        SELECT COALESCE(MAX(dbt_valid_from), '1900-01-01'::timestamp)
+        FROM {{ source('silver', 'host_snapshot') }}
+    )
 )
 
 -- Deduplicate: one row per host per scraped_date 
