@@ -1,7 +1,7 @@
 {{
     config(
         unique_key='uid',
-        alias='g_facts' 
+        alias='facts' 
     )
 }}
 

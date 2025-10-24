@@ -1,7 +1,7 @@
 {{
     config(
         unique_key='lga_code', 
-        alias='lgas',
+        alias='dim_lgas',
         post_hook=[
             "ALTER TABLE {{ this }} ADD PRIMARY KEY (lga_code)"
         ]
