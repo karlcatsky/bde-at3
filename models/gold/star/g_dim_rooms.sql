@@ -12,7 +12,7 @@ with source as (
 cleaned as (
     select 
         room_type_id,
-        room_type,
+        INITCAP(room_type) as room_type,
         CASE -- always backdate the earliest known record for each key 
             WHEN dbt_valid_from = (
                 SELECT MIN(inner_src.dbt_valid_from)
@@ -28,7 +28,7 @@ cleaned as (
 unknown as (
     SELECT 
         '0' as room_type_id, 
-        'unknown' as room_type,
+        'Unknown' as room_type,
         '1900-01-01'::timestamp as valid_from,
         null::timestamp as valid_to
 )

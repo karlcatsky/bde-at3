@@ -20,8 +20,8 @@ earliest_dates as (
 cleaned as (
     select 
 
-        s.host_id,
-        INITCAP(s.host_name),
+        s.host_id as host_id,
+        INITCAP(s.host_name) as host_name,
         INITCAP(s.host_neighbourhood) as host_neighbourhood, -- suburb_name
         s.host_since::date as host_since_date, 
         s.is_superhost,
