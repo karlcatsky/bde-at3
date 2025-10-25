@@ -35,7 +35,6 @@ WITH sorted_snapshot as (
         price::NUMERIC as price,
 
         -- Snapshotting information 
-        scrape_id::BIGINT as scrape_id, 
         scraped_date::TIMESTAMP as scraped_dt,
 
         -- Currency tracker
@@ -102,9 +101,7 @@ SELECT
     current.price, 
 
     -- Snapshot timestamps 
-    current.scraped_dt as last_updated,
-    current.scrape_id as source_scrape_id
-
+    current.scraped_dt as last_updated
 
 FROM current  
 INNER JOIN host on current.host_id = host.dim_host_id 
