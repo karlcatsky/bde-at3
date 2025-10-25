@@ -8,6 +8,7 @@
 -- The purporse of this intermediate staging model is to stage host dimensional data and apply some light-touch transformations to make it appropriate for snapshotting. 
 -- The actual silver dimension on the other hand is the "single source of truth" containing only the most recent valid record for each unique host_id, in 3NF. 
 
+
 WITH base AS ( 
 -- Base castings and columns to track 
     SELECT 
@@ -27,21 +28,16 @@ WITH base AS (
         scraped_date::TIMESTAMP as scraped_date 
 
     FROM {{ ref('b_listings') }}
-    -- Yield only records after most recent changes 
-    WHERE scraped_date::TIMESTAMP > (
-        SELECT COALESCE(MAX(dbt_valid_from), '1900-01-01'::timestamp)
-        FROM {{ source('snapshots', 'host_snapshot') }}
-    )
 )
 
 -- Deduplicate: one row per host per scraped_date 
 -- This is just to decrease query overhead: only one host per date is necessary: we don't need to know about the same host who might have multiple listings 
 SELECT 
     host_id, 
+    scraped_date, 
     MAX(host_name) as host_name, 
     MAX(host_neighbourhood) as host_neighbourhood, 
     MIN(host_since) as host_since, 
-    BOOL_OR(is_superhost) as is_superhost, -- keep TRUE if any true 
-    scraped_date 
+    BOOL_OR(is_superhost) as is_superhost -- keep TRUE if any true 
 FROM base 
 GROUP BY host_id, scraped_date 

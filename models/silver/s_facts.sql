@@ -16,7 +16,9 @@
 -- CTEs 
 -- Source listings data (from bronze) 
 with
-    source as (select * from {{ ref('b_listings') }}),
+    source as (
+        select * from {{ ref('b_listings') }}
+        ),
 
     -- Cleaning, casting and naming 
     source_cleaned as (
@@ -52,7 +54,9 @@ with
         from {{ ref("s_scrapes") }}
     ),
 
-    listing as (select listing_id as dim_listing_id from {{ ref("s_dim_listings") }}),
+    listing as (
+        select listing_id as dim_listing_id from {{ ref("s_dim_listings") }}
+        ),
 
     merged as (
         select
@@ -117,5 +121,7 @@ with
     )
 
 -- Create key and select 
-select {{ dbt_utils.generate_surrogate_key(["listing_id", "scrape_uid"]) }} as uid, *
+select 
+    {{ dbt_utils.generate_surrogate_key(["listing_id", "scrape_uid"]) }} as uid, 
+    *
 from merged
