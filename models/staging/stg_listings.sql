@@ -1,6 +1,6 @@
 {{
     config(
-        unique_key='listing_id',
+        unique_key=['listing_id', 'scraped_date'],
         alias='listing_staging'
     )
 }}

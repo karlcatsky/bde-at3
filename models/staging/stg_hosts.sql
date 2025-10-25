@@ -1,6 +1,7 @@
 {{
     config(
-        unique_key='host_id',
+        materialized='table',
+        unique_key=['host_id', 'scraped_date'],
         alias='host_staging'
     )
 }}
