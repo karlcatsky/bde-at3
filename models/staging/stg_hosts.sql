@@ -30,7 +30,7 @@ WITH base AS (
     -- Yield only records after most recent changes 
     WHERE scraped_date::TIMESTAMP > (
         SELECT COALESCE(MAX(dbt_valid_from), '1900-01-01'::timestamp)
-        FROM {{ source('silver', 'host_snapshot') }}
+        FROM {{ source('snapshots', 'host_snapshot') }}
     )
 )
 
