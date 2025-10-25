@@ -24,9 +24,9 @@ cleaned as (
         s.listing_id, -- PK 
         
         -- Attributes which also link to other dimensions
-        s.room_type, 
-        s.property_type, 
-        s.listing_neighbourhood, 
+        INITCAP(s.room_type) as room_type, 
+        INITCAP(s.property_type) as property_type, 
+        INITCAP(s.listing_neighbourhood) as listing_neighbourhood, 
 
         -- Attributes 
         s.accommodates, 

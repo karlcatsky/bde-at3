@@ -12,7 +12,7 @@ with source as (
 cleaned as (
     select 
         property_type_id,
-        property_type,
+        INITCAP(property_type) as property_type,
         CASE -- backdate earliest timestamp for all keys
             WHEN dbt_valid_from = (
                 SELECT MIN(inner_src.dbt_valid_from) 
@@ -28,13 +28,11 @@ cleaned as (
 unknown as (
     SELECT 
         '0' as property_type_id,     -- Necessary to allow union, may have to be cast back elsewhere?
-        'unknown' as property_type,
+        'Unknown' as property_type,
         '1900-01-01'::timestamp as valid_from,
         null::timestamp as valid_to
 )
 
 SELECT * FROM unknown 
-
-UNION all
-
+UNION 
 SELECT * FROM cleaned
