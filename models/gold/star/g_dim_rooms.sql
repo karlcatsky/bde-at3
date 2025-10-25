@@ -6,7 +6,7 @@
 }}
 
 with source as (
-    select * from {{ ref('room_snapshot') }}
+    select * from {{ source('snapshots', 'room_snapshot') }}
 ),
 
 cleaned as (
@@ -34,7 +34,5 @@ unknown as (
 )
 
 select * from unknown 
-
-union all 
-
+union  
 select * from cleaned

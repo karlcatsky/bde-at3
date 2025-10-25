@@ -29,10 +29,6 @@ WITH base AS (
         scrape_id::BIGINT
 
     FROM {{ ref('b_listings') }} 
-    WHERE scraped_date::TIMESTAMP > (
-        SELECT COALESCE(MAX(dbt_valid_from), '1900-01-01'::timestamp)
-        FROM {{ source('snapshots', 'listing_snapshot')}}
-    )
 )
 
 SELECT * FROM base
