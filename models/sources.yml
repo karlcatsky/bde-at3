@@ -11,7 +11,8 @@ sources:
       - name: raw_lga_suburbs 
       - name: raw_listings 
   
-  - name: silver 
+  - name: snapshots 
+    database: postgres
     schema: silver 
     tables:
       - name: host_snapshot 
