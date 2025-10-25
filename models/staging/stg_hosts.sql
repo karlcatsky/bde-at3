@@ -1,7 +1,7 @@
 {{
     config(
         materialized='table',
-        unique_key='scraped_date',
+        unique_key='host_id',
         alias='host_staging'
     )
 }}
@@ -32,7 +32,7 @@ WITH base AS (
     WHERE host_id IS NOT NULL
 ),
 
-deduped as (
+deduped as ( -- yield one row per host, most recent
     SELECT DISTINCT ON (host_id) 
         host_id,
         host_name,

@@ -122,7 +122,7 @@ SELECT
     s.review_scores_communication,
     s.review_scores_value,
 
-    -- new measure 
+    -- new measure
     30 - s.availability_30 as num_stays
 
 FROM source_facts s
