@@ -1,6 +1,7 @@
 {{
     config(
-        unique_key=['listing_id', 'scraped_date'],
+        materialized='table',
+        unique_key='listing_id',
         alias='listing_staging'
     )
 }}
@@ -25,10 +26,24 @@ WITH base AS (
         price::NUMERIC, 
 
         -- for snapshotting: 
-        scraped_date::TIMESTAMP,
-        scrape_id::BIGINT
+        scraped_date::TIMESTAMP
 
     FROM {{ ref('b_listings') }} 
+),
+
+deduped as (    -- yield one row per listing, most recent 
+    SELECT DISTINCT ON (listing_id) 
+        listing_id, 
+        host_id, 
+        room_type, 
+        property_type, 
+        listing_neighbourhood, 
+        accommodates,
+        has_availability,
+        price, 
+        scraped_date
+    FROM base 
+    ORDER BY listing_id, scraped_date DESC
 )
 
-SELECT * FROM base
+SELECT * FROM deduped
