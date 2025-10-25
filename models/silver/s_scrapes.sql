@@ -11,7 +11,7 @@
 
 WITH source AS (
     SELECT 
-        SPLIT_PART(scrape_id, '.', 1)::BIGINT, -- truncate decimal points before casting
+        SPLIT_PART(scrape_id, '.', 1)::BIGINT as scrape_id, -- truncate decimal points before casting
         scraped_date::date
     FROM {{ ref('b_listings') }}
 ) 

@@ -25,7 +25,7 @@ with
         select
             -- Foreign Key and timestamps
             listing_id::int as listing_id,
-            scrape_id::bigint as scrape_id,
+            SPLIT_PART(scrape_id, '.', 1)::bigint as scrape_id,
             scraped_date::timestamp as scraped_dt,
 
             -- MEASURES (fast-changing)
