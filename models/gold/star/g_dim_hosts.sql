@@ -1,7 +1,10 @@
 {{
     config(
         unique_key='host_id', 
-        alias='dim_hosts' 
+        alias='dim_hosts',
+        post_hook=[
+            "CREATE INDEX IF NOT EXISTS idx_hosts_temporal ON {{ this }}(host_id, valid_from, valid_to)"
+        ] 
     )
 }}
 

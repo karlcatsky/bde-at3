@@ -5,169 +5,112 @@
 }} 
 
 
-with facts as ( -- Source facts 
-    SELECT 
-        listing_id, 
-        host_id,
-        lga_code,
-        valid_on_id, 
-        num_stays,
-        review_scores_rating
-    FROM {{ ref('g_facts') }}
+with enriched_facts as (
+	select 
+		f.lga_code, 
+		dt.year_month, 
+		f.listing_id, 
+		f.host_id, 
+		f.active, 
+		f.daily_price, 
+		f.num_stays, 
+		f.review_scores_rating, 
+		dt.date, 
+		h.is_superhost 
+	from {{ ref('g_facts') }} f 
+	inner join {{ ref('g_dim_dates') }} dt 
+		on f.valid_on_id = dt.date_id 
+	inner join {{ ref('g_dim_hosts') }} h 
+		on f.host_id = h.host_id 
+		and dt.date between h.valid_from and coalesce(h.valid_to, '9999-12-31'::timestamp)
 ), 
-
--- Linked dimensions 
-listings as (
-    SELECT 
-        listing_id, 
-        active,
-        daily_price,
-        valid_from,
-        valid_to
-    FROM {{ ref('g_dim_listings') }}
+aggregated as ( 
+	select 
+		lga_code, 
+		year_month, 
+		-- Active listing metrics 
+		SUM(case when active = true then 1 else 0 end)::numeric as total_active_listings, 
+		sum(case when active = false then 1 else 0 end)::numeric as total_inactive_listings, 
+		MIN(daily_price) filter (where active = true) as min_price, 
+		MAX(daily_price) filter (where active = true) as max_price, 
+		PERCENTILE_CONT(0.5) within group (order by daily_price) filter (
+			where active = true) as mdn_price, 
+		AVG(daily_price) filter (where active = true) as avg_price, 
+		AVG(review_scores_rating) filter (where active = true and review_scores_rating is not null) as avg_review_score,
+		SUM(num_stays) filter (where active = true) as total_stays,
+		AVG(num_stays * daily_price) filter (where active = true) as est_revenue_per_listing, 
+		-- All listing metrics 
+		COUNT(distinct host_id) as num_hosts, 
+		COUNT(distinct host_id) filter (where is_superhost = true) as num_superhosts 
+	from enriched_facts 
+	group by lga_code, year_month 
 ), 
-
-dates as (
-    SELECT 
-        date_id, 
-        "date", 
-        year_month 
-    FROM {{ ref('g_dim_dates') }}
-),
-
-neighbourhoods as (
-    SELECT 
-        lga_id, 
-        lga_name 
-    FROM {{ ref('g_dim_locations') }}
+located as (
+	select 
+		INITCAP(l.lga_name) as listing_neighbourhood, 
+		a.year_month as month_year, 
+		a.min_price, 
+		a.max_price, 
+		a.mdn_price, 
+		a.avg_price,
+		a.num_hosts, 
+		a.num_superhosts::numeric / nullif(a.num_hosts, 0) * 100.0 as superhost_rate, 
+		a.avg_review_score, 
+		a.total_stays, 
+		a.est_revenue_per_listing,
+		a.total_active_listings, 
+		a.total_inactive_listings
+	from aggregated a 
+	-- joining to the silver table here is more stable because no timestamps are needed and normalization preferred
+	left join {{ ref('s_dim_lgas') }} l 
+        on a.lga_code = l.lga_code 
+	where l.lga_name is not null 
 ), 
-
-hosts as (
-    SELECT 
-        host_id, 
-        is_superhost,
-        valid_from,
-        valid_to
-    FROM {{ ref('g_dim_hosts') }}
-), 
-
-enriched as ( -- Join facts to dims using SCD2 logic 
-    SELECT 
-
-        f.listing_id, 
-        f.host_id, 
-        n.lga_name as listing_neighbourhood, 
-        dt.year_month,
-        l.active, 
-        l.daily_price, 
-        f.review_scores_rating,
-        h.is_superhost,
-        f.num_stays
-
-    FROM facts f 
-    LEFT JOIN dates dt 
-        ON f.valid_on_id = dt.date_id 
-    LEFT JOIN listings l 
-        ON f.listing_id = l.listing_id 
-        AND dt.date
-            BETWEEN l.valid_from 
-                AND COALESCE(l.valid_to, '9999-12-31'::timestamp)
-    LEFT JOIN hosts h 
-        ON f.host_id = h.host_id
-        AND dt.date 
-            BETWEEN h.valid_from 
-                AND COALESCE(h.valid_to, '9999-12-31'::timestamp) 
-    LEFT JOIN neighbourhoods n 
-        ON f.lga_code = n.lga_id 
-),
-
-current_period as ( -- Compute aggregates for each month 
-    SELECT 
-        listing_neighbourhood, 
-        year_month, 
-        -- Active listings rate 
-        (SUM(
-            CASE WHEN active = TRUE THEN 1 ELSE 0 END
-            )::numeric / NULLIF(COUNT(*), 0)
-        ) * 100.0 as active_listing_rate, 
-        -- daily_price metrics for active listings 
-        MIN(CASE WHEN active = TRUE THEN daily_price END) as min_price, 
-        MAX(CASE WHEN active = TRUE THEN daily_price END) as max_price, 
-        PERCENTILE_CONT(0.5) WITHIN GROUP(
-            ORDER BY CASE WHEN active = TRUE THEN daily_price END 
-        ) as mdn_price, 
-        AVG(CASE WHEN active = TRUE THEN daily_price END) as avg_price, 
-        -- Distinct hosts 
-        COUNT(DISTINCT host_id) as num_distinct_hosts, 
-        -- Superhost rate 
-        (COUNT(DISTINCT host_id) FILTER (WHERE is_superhost = TRUE))::NUMERIC
-            / NULLIF(COUNT(DISTINCT host_id), 0)::NUMERIC * 100.0 as superhost_rate, 
-        -- Total stays for active listings 
-        SUM(CASE WHEN active = TRUE THEN num_stays END) as total_stays, 
-        -- Average review score for active listings 
-        AVG(CASE 
-                WHEN active = TRUE 
-                -- prevent nulls from propagating
-                AND review_scores_rating IS NOT NULL 
-                AND review_scores_rating = review_scores_rating 
-                AND NOT (review_scores_rating = 'NaN'::NUMERIC) 
-                    THEN review_scores_rating
-            END) as avg_review_score, 
-        -- Average estimated revenue per active listing 
-        AVG(CASE 
-                WHEN active = TRUE 
-                    THEN num_stays * daily_price 
-            END) as avg_est_revenue_per_listing, 
-        -- Counts for pctg change calculations 
-        SUM(CASE WHEN active = TRUE THEN 1 ELSE 0 END) as total_active_listings, 
-        SUM(CASE WHEN active = FALSE THEN 1 ELSE 0 END) as total_inactive_listings 
-
-    FROM enriched 
-    GROUP BY listing_neighbourhood, year_month  
-), 
-
-previous_period as ( -- Calculate previous period metrics for pct change 
-    SELECT 
-        listing_neighbourhood,
-        year_month, 
-        total_active_listings as prev_active_listings, 
-        total_inactive_listings as prev_inactive_listings, 
-        LEAD(year_month) OVER(
-            PARTITION BY listing_neighbourhood ORDER BY year_month 
-        ) as next_month     -- to join with previous month
-    FROM current_period 
-)
-
-SELECT  -- Final table output 
--- Already formed fields for current period: 
-	c.listing_neighbourhood, 
-	c.year_month, 
-	c.active_listing_rate, 
-	c.min_price, 
-	c.max_price, 
-	c.mdn_price,
-	ROUND(c.avg_price, 2), 
-	c.num_distinct_hosts, 
-	c.superhost_rate, 
-	c.avg_review_score, 
-	c.total_stays, 
-	c.avg_est_revenue_per_listing, 
---  Percentage changes for active listings (month on month) 
-	case -- first month should be null 
-		when p.prev_active_listings > 0  -- pctg change
-		then ((c.total_active_listings - p.prev_active_listings)::DECIMAL 
-			/ p.prev_active_listings) * 100.0
-		else null 
-	end as pct_change_active_listings, 
-	-- Percentage change for inactive listings (month-on-month) 
-	case 
-		when p.prev_inactive_listings > 0 
-		then ((c.total_inactive_listings - p.prev_inactive_listings)::DECIMAL 
-			/ p.prev_inactive_listings) * 100.0
-		else null 
-	end as pct_change_inactive_listings 
-from current_period c  -- each year-month period is joined with its previous period for calculating pctg changes 
-left join previous_period p 
-	on c.listing_neighbourhood = p.listing_neighbourhood 
-	and c.year_month = p.next_month 
-order by listing_neighbourhood, year_month
+lagged as ( 
+	select 
+		*, 
+		lag(total_active_listings) over (partition by listing_neighbourhood order by month_year) as prev_month_active, 
+		lag(total_inactive_listings) over (partition by listing_neighbourhood order by month_year) as prev_month_inactive 
+	from located 
+) 
+-- output 
+select 
+	listing_neighbourhood, 
+	month_year, 
+	ROUND(total_active_listings / nullif(total_active_listings + total_inactive_listings, 0) * 100.0, 2) as active_listing_rate, 
+	min_price, 
+	max_price, 
+	mdn_price, 
+	ROUND(avg_price, 2) as avg_price,  
+	num_hosts, 
+	ROUND(superhost_rate, 2) as superhost_rate, 
+	ROUND(avg_review_score, 2) as avg_review_score, 
+	total_stays, 
+	ROUND(est_revenue_per_listing, 2) as est_revenue_per_listing,  
+	total_active_listings as active_listings_this_month, 
+	prev_month_active as active_listing_last_month, 
+	-- Pct changes month-on-month 
+	case -- special cases: 
+		-- first month: not applicable 
+		when prev_month_active is null then null 
+		-- if both 0 then "no change" (0) not null 
+		when prev_month_active = 0 and total_active_listings = 0 then 0 
+		-- for first month that activity starts, stipulate that the listings this month is the pctg increase 
+			-- essentially stipulating that previous_month was 1 rather than 0 
+		when prev_month_active = 0 and total_active_listings > 0 then total_active_listings
+		-- otherwise the standard ROC formula: 
+		else ROUND((((total_active_listings - prev_month_active)::numeric / prev_month_active) * 100.0), 2) 
+	end as pct_change_active, 	
+	case -- special cases: 
+		-- first month: not applicable 
+		when prev_month_inactive is null then null 
+		-- if both 0 then "no change" (0) not null 
+		when prev_month_inactive = 0 and total_inactive_listings = 0 then 0 
+		-- for first month that activity starts, stipulate that the listings this month is the pctg increase 
+			-- essentially stipulating that previous_month was 1 rather than 0 
+		when prev_month_inactive = 0 and total_inactive_listings > 0 then total_inactive_listings
+		-- otherwise the standard ROC formula: 
+		else ROUND((((total_inactive_listings - prev_month_inactive)::numeric / prev_month_inactive) * 100.0), 2) 
+	end as pct_change_inactive 
+from lagged 
+order by listing_neighbourhood, month_year

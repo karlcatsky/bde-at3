@@ -4,202 +4,117 @@
     )
 }}
 
-with facts as (
-    SELECT 
-        -- Keys 
-        listing_id, 
-        valid_on_id, 
-        host_id,
-        property_type_id,
-        room_type_id, 
-        -- Facts 
-        num_stays, 
-        review_scores_rating
-    FROM {{ ref('g_facts') }}
-), 
-
-listings as (
-    SELECT 
-        listing_id, 
-        active, 
-        daily_price,
-        accommodates,
-        valid_from,
-        valid_to
-    FROM {{ ref('g_dim_listings') }}
+with monthly_facts as (
+	-- Pre-aggregate facts by listing, host and month 
+	select 
+		f.listing_id, 
+		f.host_id, 
+		dt.year_month, 
+		dt.date as month_date, 
+		-- Aggregate metrics 
+		BOOL_OR(f.active) as active, -- true if active at any point in month 
+		AVG(f.daily_price) as avg_daily_price, 
+		AVG(f.review_scores_rating) as avg_review_score, 
+		SUM(f.num_stays) as total_stays 
+	from {{ ref('g_facts') }} f 
+	inner join {{ ref('g_dim_dates') }} dt on f.valid_on_id = dt.date_id 
+	group by f.listing_id, f.host_id, dt.year_month, dt.date
+), -- runtime of 2m 
+enriched_monthly as ( -- join to dimensions once per listing per month 
+	select 
+		mf.year_month, 
+		mf.active, 
+		mf.avg_daily_price, 
+		mf.avg_review_score,  
+		mf.total_stays, 
+		l.property_type, 
+		l.room_type,
+		l.accommodates, 
+		h.is_superhost, 
+		mf.listing_id, 
+		mf.host_id 
+	from monthly_facts mf 
+	inner join {{ ref('g_dim_listings') }} l 
+		on mf.listing_id = l.listing_id 
+		and mf.month_date between l.valid_from and coalesce(l.valid_to, '9999-12-31'::timestamp)
+	inner join {{ ref('g_dim_hosts') }} h 
+		on mf.host_id = h.host_id 
+		and mf.month_date between h.valid_from and coalesce(h.valid_to, '9999-12-31'::timestamp)
 ),
-
-dates as (
+aggregated as (
     SELECT 
-        date_id, 
-        "date", 
-        year_month 
-    FROM {{ ref('g_dim_dates') }}
-), 
-
-hosts as (
-    SELECT 
-        host_id, 
-        is_superhost,
-        valid_from,
-        valid_to 
-    FROM {{ ref('g_dim_hosts') }}
-),
-
-properties as (
-    SELECT 
-        property_type_id, 
-        property_type, 
-        valid_from,
-        valid_to 
-    FROM {{ ref('g_dim_properties') }} 
-),
-
-rooms as (
-    SELECT 
-        room_type_id, 
+        property_type,
         room_type,
-        valid_from,
-        valid_to 
-    FROM {{ ref('g_dim_rooms') }}
+        accommodates,
+        year_month,
+        COUNT(*) FILTER (WHERE active = TRUE) AS active_count,
+        COUNT(*) FILTER (WHERE active = FALSE) AS inactive_count,
+        -- Use the pre-aggregated values
+        MIN(avg_daily_price) FILTER (WHERE active = TRUE) AS min_price,
+        MAX(avg_daily_price) FILTER (WHERE active = TRUE) AS max_price,
+        PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY avg_daily_price) FILTER (WHERE active = TRUE) AS mdn_price,
+        AVG(avg_daily_price) FILTER (WHERE active = TRUE) AS avg_price,
+        AVG(avg_review_score) FILTER (WHERE active = TRUE) AS avg_review_score,
+        SUM(total_stays) FILTER (WHERE active = TRUE) AS total_stays,
+        AVG(total_stays * avg_daily_price) FILTER (WHERE active = TRUE) AS est_revenue_per_listing,
+        COUNT(DISTINCT host_id) AS num_hosts,
+        COUNT(DISTINCT host_id) FILTER (WHERE is_superhost = TRUE)::NUMERIC / NULLIF(COUNT(DISTINCT host_id), 0) * 100.0 AS superhost_rate
+    FROM enriched_monthly
+    GROUP BY property_type, room_type, accommodates, year_month
 ),
-
-joined as (
-    SELECT 
-
-        f.listing_id, 
-        p.property_type, 
-        r.room_type, 
-        l.accommodates, 
-        dt.year_month,
-        l.active,
-        l.daily_price as daily_price,
-        f.review_scores_rating,
-        f.num_stays, 
-        f.host_id, 
-        h.is_superhost 
-
-    FROM facts f 
-    LEFT JOIN dates dt  -- join with date dimension first 
-        ON f.valid_on_id = dt.date_id 
-    -- Join with dims by SCD2 logic 
-    LEFT JOIN listings l 
-        ON f.listing_id = l.listing_id 
-        AND dt.date BETWEEN l.valid_from and COALESCE(l.valid_to, '9999-12-31'::timestamp)
-    LEFT JOIN properties p 
-        ON f.property_type_id = p.property_type_id 
-        AND dt.date BETWEEN p.valid_from AND COALESCE(p.valid_to, '9999-12-31'::timestamp)
-    LEFT JOIN rooms r 
-        ON f.room_type_id = r.room_type_id 
-        AND dt.date BETWEEN r.valid_from AND COALESCE(r.valid_to, '9999-12-31'::timestamp) 
-    LEFT JOIN hosts h 
-        ON f.host_id = h.host_id 
-        AND dt.date BETWEEN h.valid_from AND COALESCE(h.valid_to, '9999-12-31'::timestamp) 
-),
-
-current_period as ( -- calculate metrics for each month
--- This view should present information per property_type, room_type, accommodates and month/year including: 
+lagged as (
 	select 
-		-- grouping fields 
-		property_type, 
-		room_type, 
-		accommodates, 
-		year_month,
-
-		-- Active listings rate 
-		SUM(case when active = true then 1 else 0 end) / nullif(COUNT(*), 0) * 100.0 as active_listing_rate, 
-
-		-- min, max, mdn and avg daily_price for active listings 
-		MIN(case when active = true then daily_price end) as min_daily_price, 
-		MAX(case when active = true then daily_price end) as max_daily_price, 
-		PERCENTILE_CONT(0.5) within group (
-			order by case when active = true then daily_price end 
-			) as mdn_daily_price, 
-		AVG(case when active = true then daily_price end) as avg_daily_price, 
-
-		-- num distinct hosts 
-		COUNT(distinct host_id) as num_distinct_hosts, 
-		-- superhost rate 
-		(COUNT(distinct host_id) filter (where is_superhost = true))::numeric
-			/ nullif(COUNT(distinct host_id)::numeric, 0) * 100.0 as superhost_rate, 
-
-		-- avg of review_scores_rating for active listings 
-		AVG(case 
-				when active = true
-				and review_scores_rating is not null -- Prevent nulls from propagating 
-				and not (review_scores_rating = 'NaN'::numeric)
-				and review_scores_rating = review_scores_rating -- NaN != NaN 
-					then review_scores_rating 
-			end) as avg_review_score,
-
-		-- Counts for pct change calculations 
-		SUM(case when active = true then 1 else 0 end) as total_active_listings, 
-		SUM(case when active = false then 1 else 0 end) as total_inactive_listings,
-
-		-- total number of stays 
-		SUM(num_stays) as total_num_stays, 
-
-		-- avg estimated revenue per active listing 
-		AVG(case when active = true then num_stays * daily_price end) as avg_est_revenue_per_active_listing
-
-	from joined 
-	group by 
-        property_type, 
-        room_type, 
-        accommodates, 
-        year_month
-),
-
-previous_period as ( -- for calculating ROC 
-	select 
-		-- grouping fields 
-		property_type,
-		room_type,
-		accommodates,
-		-- ROC 
-		total_active_listings as prev_active_listings, -- will be joined with previous month 
-		total_inactive_listings as prev_inactive_listings, 
-		lead(year_month) over (
-			partition by property_type, room_type, accommodates -- the other grouping fields 
-			order by year_month -- the temporal dimension for ROC 
-			) as next_month -- key used to join current to previous months 
-	from current_period
-	)
-
--- Final table output 
-SELECT  
-    -- Already formed fields for current period: 
-    c.property_type, 
-    c.room_type, 
-    c.accommodates,
-    c.year_month, 
-    ROUND(c.active_listing_rate, 2) as active_listing_rate,
-    ROUND(c.min_daily_price, 2) as min_daily_price,
-    ROUND(c.max_daily_price, 2) as max_daily_price,
-    c.mdn_daily_price as mdn_daily_price,
-    ROUND(c.avg_daily_price, 2) as avg_daily_price,
-    c.num_distinct_hosts,
-    ROUND(c.superhost_rate, 4) as superhost_rate,
-    ROUND(c.avg_review_score, 4) as avg_review_score,
-    -- ROC 
-    case 
-        when p.prev_active_listings > 0  -- return null for first month where ROC not applicable
-            then ((c.total_active_listings - p.prev_active_listings)::DECIMAL / p.prev_active_listings) * 100.0
-        else null 
-    end as pct_change_active, 
-    case 
-        when p.prev_inactive_listings > 0 
-            then ((c.total_inactive_listings - p.prev_inactive_listings)::DECIMAL / p.prev_inactive_listings) * 100.0 
-        else null 
-    end as pct_change_inactive,
-    c.total_num_stays, 
-    ROUND(c.avg_est_revenue_per_active_listing, 2) as avg_est_rvn_per_actv_lstng
-    
-from current_period c 
-left join previous_period p -- expected null for first month when no previous month available 
-    -- joined on the common aggregating fields 
-    on c.property_type = p.property_type
-    and c.room_type = p.room_type
-    and c.accommodates = p.accommodates 
-    and c.year_month = p.next_month  -- each month joined with the previous month 
-order by property_type, room_type, accommodates, year_month
+		*, 
+		lag(active_count) over (
+			partition by property_type, room_type, accommodates order by year_month
+			) as prev_month_active, 
+		lag(active_count) over (
+			partition by property_type, room_type, accommodates order by year_month 
+			) as prev_month_inactive 
+	from aggregated 
+)
+-- output 
+select 
+	property_type, 
+	room_type,
+	accommodates,
+	year_month as month_year, 
+	ROUND(active_count / nullif(active_count + inactive_count, 0) * 100.0, 2) as active_listing_rate, 
+	min_price, 
+	max_price, 
+	mdn_price, 
+	ROUND(avg_price, 2) as avg_price,  
+	num_hosts, 
+	ROUND(superhost_rate, 2) as superhost_rate, 
+	ROUND(avg_review_score, 2) as avg_review_score, 
+	total_stays, 
+	ROUND(est_revenue_per_listing, 2) as est_revenue_per_listing,  
+	-- Pct changes month-on-month 
+	case -- special cases: 
+		-- first month: not applicable 
+		when prev_month_active is null then null 
+		-- if both 0 then "no change" (0) not null 
+		when prev_month_active = 0 and active_count = 0 then 0 
+		-- for first month that activity starts, stipulate that the listings this month is the pctg increase 
+			-- essentially stipulating that previous_month was 1 rather than 0 
+		when prev_month_active = 0 and active_count > 0 then active_count
+		-- otherwise the standard ROC formula: 
+		else ROUND((((active_count - prev_month_active)::numeric / prev_month_active) * 100.0), 2) 
+	end as pct_change_active, 	
+	case -- special cases: 
+		-- first month: not applicable 
+		when prev_month_inactive is null then null 
+		-- if both 0 then "no change" (0) not null 
+		when prev_month_inactive = 0 and inactive_count = 0 then 0 
+		-- for first month that activity starts, stipulate that the listings this month is the pctg increase 
+			-- essentially stipulating that previous_month was 1 rather than 0 
+		when prev_month_inactive = 0 and inactive_count > 0 then inactive_count
+		-- otherwise the standard ROC formula: 
+		else ROUND((((inactive_count - prev_month_inactive)::numeric / prev_month_inactive) * 100.0), 2) 
+	end as pct_change_inactive 
+from lagged 
+order by 
+	property_type,
+	room_type,
+	accommodates, 
+	month_year 
