@@ -1,7 +1,12 @@
 {{
     config(
         unique_key='uid',
-        alias='facts' 
+        alias='facts',
+        post_hook=[
+            "CREATE INDEX IF NOT EXISTS idx_facts_lga_active ON {{ this }}(lga_code, active)",
+            "CREATE INDEX IF NOT EXISTS idx_facts_valid_on ON {{ this }}(valid_on_id)",
+            "CREATE INDEX IF NOT EXISTS idx_facts_host ON {{ this }}(host_id)"
+        ]
     )
 }}
 
